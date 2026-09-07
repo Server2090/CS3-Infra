@@ -1,0 +1,35 @@
+---
+# roles/common/handlers/main.yml
+# Handlers are tasks that only run when notified by another task.
+# They run exactly once at the end of the play, even if notified
+# multiple times. This prevents restarting a service repeatedly
+# when multiple tasks all change its config.
+
+- name: Update GRUB
+  ansible.builtin.command:
+    cmd: update-grub
+  # Regenerates the GRUB bootloader config from /etc/default/grub
+  # Must run after any change to that file for changes to take effect
+  # Only runs if the GRUB config task above reported a change
+
+- name: Restart SSH
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+  # Restarts the SSH daemon to apply config changes
+  # Only runs if the sshd_config template task reported a change
+  # Ansible keeps the current SSH connection alive during the restart
+  # so you are not disconnected mid-playbook
+
+- name: Restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  # Restarts fail2ban to apply config changes
+  # Only runs if the fail2ban config task reported a change
+
+- name: Reload UFW
+  ansible.builtin.command:
+    cmd: ufw reload
+  # Reloads UFW firewall rules without dropping existing connections
+  # Only runs if a UFW rule task reported a change

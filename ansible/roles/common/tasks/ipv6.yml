@@ -1,0 +1,40 @@
+---
+# roles/common/tasks/ipv6.yml
+# Disables IPv6 system-wide.
+# Proxmox does not need IPv6 in this environment and disabling it
+# reduces attack surface and eliminates IPv6-related firewall complexity.
+# UFW rules are simpler when you only need to think about IPv4.
+
+- name: Disable IPv6 via sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-disable-ipv6.conf
+    # sysctl_file = write to a dedicated file instead of the main sysctl.conf
+    # Keeps our changes isolated and easy to identify
+    reload: true
+    # reload = apply the change immediately without rebooting
+  loop:
+    - { key: "net.ipv6.conf.all.disable_ipv6",     value: "1" }
+    - { key: "net.ipv6.conf.default.disable_ipv6",  value: "1" }
+    - { key: "net.ipv6.conf.lo.disable_ipv6",       value: "1" }
+    # all       = all existing network interfaces
+    # default   = any new interfaces created in the future (VMs, bridges)
+    # lo        = the loopback interface
+    # Setting all three ensures no interface ever gets an IPv6 address
+  tags: [common, common_ipv6]
+
+- name: Disable IPv6 in GRUB kernel parameters
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1"'
+    # Adds ipv6.disable=1 as a kernel boot parameter
+    # This disables IPv6 at the kernel level on every boot
+    # The sysctl approach above handles the running system
+    # This handles it at boot before sysctl runs
+    backup: true
+    # backup = keeps a copy of the original grub file before editing
+  notify: Update GRUB
+  tags: [common, common_ipv6]

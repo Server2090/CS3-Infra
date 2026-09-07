@@ -1,0 +1,181 @@
+---
+# roles/common/vars/main.yml
+# Variables for the common role.
+# Applied to every Linux host regardless of type.
+# This is the single place to change common config —
+# no need to touch any task files for routine changes.
+
+# ── APT repositories ──────────────────────────────────────────────
+# Enterprise repo files that ship with Proxmox but require a paid
+# subscription. Without a valid key, apt update throws an auth error
+# that blocks all package installs. Remove them immediately.
+common_repos_remove:
+  - path: "/etc/apt/sources.list.d/pve-enterprise.list"
+  - path: "/etc/apt/sources.list.d/ceph.list"
+
+# ── Packages ──────────────────────────────────────────────────────
+common_packages_install:
+  - curl          # HTTP client — needed for scripts and API calls
+  - wget          # HTTP downloader
+  - htop          # interactive process viewer
+  - iotop         # disk I/O monitor — useful for ZFS troubleshooting
+  - iftop         # network bandwidth monitor per interface
+  - net-tools     # ifconfig, netstat — useful for network debugging
+  - lm-sensors    # hardware temperature and fan monitoring
+  - smartmontools # SMART drive health monitoring — critical for SSDs
+  - chrony        # NTP client — more reliable than systemd-timesyncd
+  - fail2ban      # brute force protection for SSH
+  - ufw           # firewall — simple frontend for iptables
+  - unattended-upgrades  # automatic security updates
+
+common_packages_remove:
+  - os-prober
+  # Detects other operating systems for grub
+  # Unnecessary on a hypervisor, causes noisy grub output
+  # Safe to remove — Proxmox manages its own bootloader
+
+# ── Local user accounts ───────────────────────────────────────────
+# Non-root accounts created on every managed host.
+# Ansible connects as root — these are for human operators.
+#
+# op     — daily use account with sudo access
+# rescue — break-glass account for when op account is unavailable
+#
+# SSH public keys are read from the Ansible control machine.
+# Generate keys with:
+#   ssh-keygen -t ed25519 -f ~/.ssh/op@cs3.lab -C "op@cs3.lab"
+#   ssh-keygen -t ed25519 -f ~/.ssh/rescue@cs3.lab -C "rescue@cs3.lab"
+common_local_accounts:
+  - name: cs3admin
+    comment: "CS3 shared operator account — managed by Ansible"
+    groups: sudo
+    # sudo group membership gives full sudo access on Debian
+    shell: /bin/bash
+    pubkey_file: "~/.ssh/cs3admin@cs3.lab.pub"
+    # Path on the Ansible control machine (your Parrot laptop)
+    # This public key gets pushed to ~/.ssh/authorized_keys on the server
+
+  - name: cs3rescue
+    comment: "CS3 break-glass account — use only when op is unavailable"
+    groups: sudo
+    shell: /bin/bash
+    pubkey_file: "~/.ssh/cs3rescue@cs3.lab.pub"
+
+# ── SSH hardening ─────────────────────────────────────────────────
+common_ssh_settings:
+  port: "{{ ssh_port }}"
+  # ssh_port comes from group_vars/all.yml — currently 22
+
+  permit_root_login: "prohibit-password"
+  # prohibit-password = root can SSH with a key but never with a password
+  # Required because Ansible connects as root using key auth
+  # Never set to "yes" — that allows password brute force against root
+
+  password_authentication: "no"
+  # Disable password auth entirely — keys only
+  # Eliminates the entire class of password brute force attacks
+
+  x11_forwarding: "no"
+  # No graphical forwarding needed — reduces attack surface
+
+  max_auth_tries: 3
+  # Disconnect after 3 failed auth attempts
+  # Works alongside fail2ban which bans IPs after repeated failures
+
+  client_alive_interval: 300
+  # Send a keepalive packet every 300 seconds (5 minutes)
+  # Detects dead connections without waiting forever
+
+  client_alive_count_max: 2
+  # Disconnect after 2 missed keepalives
+  # Idle sessions disconnect after ~10 minutes (300s * 2)
+
+  allowed_users: "root cs3admin cs3rescue"
+  # Whitelist — any user not listed cannot SSH in
+  # Even with a valid key, unlisted users are rejected at the SSH level
+
+# ── fail2ban ──────────────────────────────────────────────────────
+common_fail2ban:
+  maxretry: 5
+  # Ban after 5 failed SSH attempts
+
+  findtime: 600
+  # Count failures within a 10 minute window
+
+  bantime: 3600
+  # Ban the IP for 1 hour
+  # After bantime expires the IP can try again
+  # Persistent attackers get banned repeatedly
+
+# ── UFW firewall ──────────────────────────────────────────────────
+common_ufw:
+  ssh_allow_from:
+    - "{{ mgt_subnet }}"
+    # Only allow SSH from 192.168.80.0/24 — the management network
+    # SSH from any other network is blocked at the firewall level
+    # This is the primary network-level access control
+
+# ── Sysctl hardening ──────────────────────────────────────────────
+common_sysctl_settings:
+
+  # ── Routing ──
+  net.ipv4.ip_forward: 1
+  # Must be 1 on Proxmox — required for VM and LXC network traffic
+  # to route between interfaces. Without this VMs cannot reach the network.
+
+  # ── Spoofing protection ──
+  net.ipv4.conf.all.rp_filter: 1
+  # Reverse path filtering — drops packets that arrive on the wrong
+  # interface. Prevents IP spoofing attacks where an attacker sends
+  # packets with a forged source IP.
+
+  # ── ICMP redirect protection ──
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
+  # Reject ICMP redirect messages — prevents an attacker from
+  # manipulating the routing table by sending fake redirects
+
+  net.ipv4.conf.all.send_redirects: 0
+  # Do not send ICMP redirects — this host is not a router
+
+  # ── Source routing ──
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv6.conf.all.accept_source_route: 0
+  # Reject source-routed packets — prevents an attacker from
+  # dictating the path packets take through the network
+
+  # ── Broadcast protection ──
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  # Ignore broadcast pings — prevents smurf amplification attacks
+  # where an attacker sends a ping to the broadcast address and
+  # all hosts reply, flooding the attacker's target
+
+  # ── SYN flood protection ──
+  net.ipv4.tcp_syncookies: 1
+  # SYN cookies — protects against SYN flood denial of service attacks
+  # Server sends a cryptographic cookie instead of allocating state
+  # for every incoming SYN packet
+
+  # ── Memory hardening ──
+  kernel.randomize_va_space: 2
+  # Full ASLR — randomises memory layout on every execution
+  # Makes exploits that rely on known memory addresses much harder
+
+  kernel.dmesg_restrict: 1
+  # Restrict dmesg output to root only
+  # Prevents unprivileged users from reading kernel messages
+  # which can leak hardware and memory layout information
+
+  # ── ZFS performance ──
+  vm.swappiness: 10
+  # Reduce swap aggressiveness — ZFS ARC manages its own RAM cache
+  # High swappiness causes the kernel to fight ZFS ARC for RAM
+  # 10 = only swap when absolutely necessary
+
+# ── Login banner ──────────────────────────────────────────────────
+common_motd: |
+  **************************************************************************
+  *                        CS3 Infrastructure                              *
+  *                  Authorized access only. All activity                  *
+  *                  is monitored and logged.                              *
+  **************************************************************************

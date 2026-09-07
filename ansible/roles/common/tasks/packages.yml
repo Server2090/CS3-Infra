@@ -1,0 +1,21 @@
+---
+# roles/common/tasks/packages.yml
+# Installs required packages and removes unwanted ones.
+# All package lists are defined in vars/main.yml — never hardcode
+# package names in task files.
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages_install }}"
+    state: present
+    # present = install if not already installed, skip if already there
+    # This is idempotent — running twice has no effect
+  tags: [common, common_packages]
+
+- name: Remove unwanted packages
+  ansible.builtin.apt:
+    name: "{{ common_packages_remove }}"
+    state: absent
+    # absent = remove if installed, skip if already gone
+    # purge is not set — keeps config files in case you change your mind
+  tags: [common, common_packages]

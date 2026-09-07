@@ -1,0 +1,38 @@
+---
+# roles/common/tasks/repos.yml
+# Fixes APT repository configuration.
+# Proxmox ships with enterprise repo files that require a paid
+# subscription. Without a valid key, apt update throws a 401 auth
+# error that blocks every subsequent package install task.
+# We remove those files and add the free community repos instead.
+
+- name: Remove Proxmox enterprise repo files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+    # absent = delete the file if it exists, do nothing if it doesn't
+    # This is idempotent — safe to run multiple times
+  loop: "{{ common_repos_remove }}"
+  # loop iterates over the list in common_repos_remove in vars/main.yml
+  # Each iteration sets item.path to the next path in the list
+  tags: [common, common_repos]
+
+- name: Add Proxmox no-subscription community repo
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.proxmox.com/debian/pve {{ proxmox_release }} pve-no-subscription"
+    # proxmox_release comes from group_vars/proxmox.yml — currently trixie
+    # pve-no-subscription = free repo, identical packages to enterprise
+    state: present
+    filename: pve-no-subscription
+    # filename = the file created in /etc/apt/sources.list.d/
+    # Using a dedicated file keeps it clean and easy to manage
+  tags: [common, common_repos]
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    # cache_valid_time = only update if cache is older than 3600 seconds
+    # Prevents unnecessary updates if the cache is already fresh
+    # Saves time on subsequent playbook runs
+  tags: [common, common_repos]

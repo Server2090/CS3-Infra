@@ -1,0 +1,55 @@
+---
+# roles/common/tasks/main.yml
+# Table of contents for the common role.
+# Each line includes a separate task file for that concern.
+# Order matters — each step depends on the previous one:
+#   1. repos     — fix apt sources first so packages can install
+#   2. packages  — install tools before anything tries to use them
+#   3. ipv6      — disable IPv6 before SSH hardens
+#   4. users     — create accounts before SSH locks down allowed_users
+#   5. ssh       — harden SSH only after accounts exist
+#   6. fail2ban  — brute force protection after SSH is configured
+#   7. ufw       — firewall last, after all services are configured
+#   8. sysctl    — kernel hardening parameters
+#   9. time      — NTP after network is stable
+#  10. motd      — cosmetic, always last
+
+- name: Configure APT repositories
+  ansible.builtin.include_tasks: repos.yml
+  tags: [common, common_repos]
+
+- name: Install and remove packages
+  ansible.builtin.include_tasks: packages.yml
+  tags: [common, common_packages]
+
+- name: Disable IPv6
+  ansible.builtin.include_tasks: ipv6.yml
+  tags: [common, common_ipv6]
+
+- name: Create local user accounts
+  ansible.builtin.include_tasks: users.yml
+  tags: [common, common_users]
+
+- name: Harden SSH
+  ansible.builtin.include_tasks: ssh.yml
+  tags: [common, common_ssh]
+
+- name: Configure fail2ban
+  ansible.builtin.include_tasks: fail2ban.yml
+  tags: [common, common_fail2ban]
+
+- name: Configure UFW firewall
+  ansible.builtin.include_tasks: ufw.yml
+  tags: [common, common_ufw]
+
+- name: Apply sysctl hardening
+  ansible.builtin.include_tasks: sysctl.yml
+  tags: [common, common_sysctl]
+
+- name: Configure NTP
+  ansible.builtin.include_tasks: time.yml
+  tags: [common, common_time]
+
+- name: Configure login banner
+  ansible.builtin.include_tasks: motd.yml
+  tags: [common, common_motd]
