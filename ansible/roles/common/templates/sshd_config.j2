@@ -1,0 +1,96 @@
+# /etc/ssh/sshd_config
+# Managed by Ansible — do not edit manually
+# Changes belong in roles/common/vars/main.yml
+# Apply changes by re-running: ansible-playbook site.yml -t common_ssh
+
+# ── Network ───────────────────────────────────────────────────────
+Port {{ common_ssh_settings.port }}
+# Port SSH listens on — defined in group_vars/all.yml as ssh_port
+# Access is restricted to mgt_subnet by UFW regardless of port
+
+AddressFamily inet
+# inet = IPv4 only — IPv6 is disabled system-wide
+# Prevents SSH from binding to any IPv6 addresses
+
+ListenAddress 0.0.0.0
+# Listen on all IPv4 interfaces
+# UFW restricts which source IPs can actually reach this port
+
+# ── Authentication ────────────────────────────────────────────────
+PermitRootLogin {{ common_ssh_settings.permit_root_login }}
+# prohibit-password = root can authenticate with a key but never
+# with a password. Required for Ansible which connects as root.
+
+PasswordAuthentication {{ common_ssh_settings.password_authentication }}
+# no = disable password authentication entirely — keys only
+# Eliminates the entire class of password brute force attacks
+
+PubkeyAuthentication yes
+# yes = enable public key authentication — the only auth method allowed
+
+AuthorizedKeysFile .ssh/authorized_keys
+# Standard location for authorized public keys
+# Ansible writes keys here via the authorized_key module
+
+PermitEmptyPasswords no
+# Never allow login with an empty password under any circumstances
+
+ChallengeResponseAuthentication no
+# Disable challenge-response auth — keyboard-interactive prompts
+# Prevents PAM-based password authentication from sneaking through
+
+UsePAM yes
+# Keep PAM enabled for account and session management
+# PAM handles login tracking and session setup even without passwords
+
+# ── Access control ────────────────────────────────────────────────
+AllowUsers {{ common_ssh_settings.allowed_users }}
+# Whitelist — only these users can SSH in regardless of keys
+# Currently: root cs3admin cs3rescue
+# Any other user is rejected at the SSH level before auth even runs
+
+# ── Security ──────────────────────────────────────────────────────
+X11Forwarding {{ common_ssh_settings.x11_forwarding }}
+# no = disable graphical forwarding — not needed, reduces attack surface
+
+MaxAuthTries {{ common_ssh_settings.max_auth_tries }}
+# Disconnect after this many failed auth attempts per connection
+# Works alongside fail2ban which bans IPs after repeated connections
+
+LoginGraceTime 30
+# Disconnect unauthenticated connections after 30 seconds
+# Prevents half-open connections from accumulating
+
+StrictModes yes
+# Check file permissions on key files before accepting them
+# Rejects keys with overly permissive permissions (e.g. world-readable)
+
+IgnoreRhosts yes
+# Ignore .rhosts files — legacy insecure auth mechanism
+
+HostbasedAuthentication no
+# Disable host-based authentication — insecure legacy mechanism
+
+# ── Session ───────────────────────────────────────────────────────
+ClientAliveInterval {{ common_ssh_settings.client_alive_interval }}
+# Send keepalive every 300 seconds (5 minutes)
+# Detects dead connections without waiting indefinitely
+
+ClientAliveCountMax {{ common_ssh_settings.client_alive_count_max }}
+# Disconnect after 2 missed keepalives
+# Idle sessions time out after ~10 minutes (300s * 2)
+
+# ── Logging ───────────────────────────────────────────────────────
+LogLevel VERBOSE
+# VERBOSE logs the key fingerprint used for each login
+# Makes it easy to identify which key was used in auth logs
+# More useful than INFO, less noisy than DEBUG
+
+SyslogFacility AUTH
+# Log to the AUTH facility — appears in /var/log/auth.log
+# Standard location for SSH authentication events
+
+# ── SFTP ──────────────────────────────────────────────────────────
+Subsystem sftp /usr/lib/openssh/sftp-server
+# Enable SFTP subsystem for secure file transfers
+# Uses the same key auth as SSH — no separate configuration needed

@@ -1,0 +1,28 @@
+---
+# roles/common/tasks/ssh.yml
+# Hardens the SSH daemon configuration.
+# Runs after users.yml — accounts must exist before SSH locks
+# down the AllowUsers list or you cannot log back in.
+# All settings come from common_ssh_settings in vars/main.yml.
+
+- name: Write hardened sshd_config
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    # 0600 = read/write for root only — sshd requires this
+    # If permissions are wrong sshd refuses to start
+    backup: true
+    # backup = keeps a timestamped copy of the previous sshd_config
+    # Gives you an immediate fallback if something goes wrong
+    validate: /usr/sbin/sshd -t -f %s
+    # validate runs sshd in test mode against the new config BEFORE
+    # writing it to disk. If there is a syntax error the task fails
+    # and the current working sshd_config is left untouched.
+    # This prevents you from ever being locked out by a bad config.
+  notify: Restart SSH
+  # notify = tells the handler to restart sshd at the end of the play
+  # The handler only runs if this task reported a change
+  tags: [common, common_ssh]

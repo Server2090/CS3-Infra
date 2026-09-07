@@ -1,0 +1,26 @@
+---
+# roles/common/tasks/fail2ban.yml
+# Configures fail2ban to protect SSH against brute force attacks.
+# fail2ban watches auth.log and bans IPs that fail authentication
+# too many times within the configured window.
+# All settings come from common_fail2ban in vars/main.yml.
+
+- name: Write fail2ban SSH jail config
+  ansible.builtin.template:
+    src: fail2ban_ssh.conf.j2
+    dest: /etc/fail2ban/jail.d/ssh.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart fail2ban
+  tags: [common, common_fail2ban]
+
+- name: Ensure fail2ban is enabled and started
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+    # enabled: true = start automatically on boot
+    # state: started = start now if not already running
+  tags: [common, common_fail2ban]

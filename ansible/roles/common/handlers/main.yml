@@ -33,3 +33,10 @@
     cmd: ufw reload
   # Reloads UFW firewall rules without dropping existing connections
   # Only runs if a UFW rule task reported a change
+
+- name: Restart chrony
+  ansible.builtin.service:
+    name: chrony
+    state: restarted
+  # Restarts chrony to apply the new NTP configuration
+  # Only runs if the chrony config template task reported a change

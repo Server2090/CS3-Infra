@@ -1,0 +1,43 @@
+---
+# roles/common/tasks/ufw.yml
+# Configures UFW firewall rules from vars/main.yml.
+# All rules are defined in common_ufw.rules — never hardcode
+# ports or sources in this file.
+# To add a rule: add an entry to common_ufw.rules and rerun.
+# To remove a rule: delete the entry and rerun.
+
+- name: Set UFW default inbound policy
+  community.general.ufw:
+    direction: incoming
+    policy: "{{ common_ufw.default_incoming }}"
+    # Currently: deny — block everything not explicitly allowed
+  tags: [common, common_ufw]
+
+- name: Set UFW default outbound policy
+  community.general.ufw:
+    direction: outgoing
+    policy: "{{ common_ufw.default_outgoing }}"
+    # Currently: allow — permit all outbound traffic
+  tags: [common, common_ufw]
+
+- name: Apply UFW rules
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    src: "{{ item.src }}"
+    comment: "{{ item.description }}"
+    # comment appears in ufw status output — makes rules readable
+  loop: "{{ common_ufw.rules }}"
+  # loop iterates over every rule in common_ufw.rules
+  # Adding a new rule = adding one block to vars/main.yml
+  # Removing a rule = deleting that block and rerunning
+  tags: [common, common_ufw]
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+    # Always last — enable only after all rules are applied
+    # Enabling before rules would immediately lock you out
+  notify: Reload UFW
+  tags: [common, common_ufw]

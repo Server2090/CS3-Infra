@@ -1,0 +1,38 @@
+# /etc/chrony/chrony.conf
+# Managed by Ansible — do not edit manually
+# Changes belong in group_vars/all.yml under ntp_servers
+
+# ── NTP servers ───────────────────────────────────────────────────
+{% for server in ntp_servers %}
+pool {{ server }} iburst
+# iburst = send a burst of packets on startup to sync quickly
+# pool = use multiple servers from this pool address
+{% endfor %}
+
+# ── Clock discipline ──────────────────────────────────────────────
+driftfile /var/lib/chrony/drift
+# Records the frequency error of the system clock
+# Chrony uses this to correct the clock faster on subsequent starts
+
+makestep 1.0 3
+# If the clock is more than 1 second off, step it immediately
+# Only allowed for the first 3 clock updates after start
+# After that chrony slews (gradually adjusts) instead of stepping
+# Stepping avoids log timestamp confusion during normal operation
+
+rtcsync
+# Sync the hardware real-time clock periodically
+# Ensures correct time after reboots even without network access
+
+# ── Security ──────────────────────────────────────────────────────
+cmdallow 127.0.0.1
+# Only allow chronyc management commands from localhost
+# Prevents remote manipulation of the time synchronization
+
+bindcmdaddress 127.0.0.1
+# Only bind the chronyc command interface to localhost
+# Not accessible from the network
+
+# ── Logging ───────────────────────────────────────────────────────
+logdir /var/log/chrony
+# Directory for chrony log files

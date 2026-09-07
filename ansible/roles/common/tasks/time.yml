@@ -1,0 +1,31 @@
+---
+# roles/common/tasks/time.yml
+# Configures NTP time synchronization using chrony.
+# chrony is more reliable than systemd-timesyncd for servers —
+# it handles network interruptions and large time offsets better.
+# NTP servers are defined in group_vars/all.yml under ntp_servers.
+
+- name: Write chrony configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart chrony
+  tags: [common, common_time]
+
+- name: Ensure chrony is enabled and started
+  ansible.builtin.service:
+    name: chrony
+    state: started
+    enabled: true
+  tags: [common, common_time]
+
+- name: Set system timezone
+  community.general.timezone:
+    name: "{{ lab_timezone }}"
+    # lab_timezone comes from group_vars/all.yml
+    # Currently: America/New_York
+  tags: [common, common_time]

@@ -1,0 +1,34 @@
+# /etc/fail2ban/jail.d/ssh.conf
+# Managed by Ansible — do not edit manually
+# Changes belong in roles/common/vars/main.yml under common_fail2ban
+
+[sshd]
+enabled  = true
+# true = activate this jail — monitors SSH auth failures
+
+port     = {{ common_ssh_settings.port }}
+# Must match the port in sshd_config
+# fail2ban watches for failures on this port specifically
+
+filter   = sshd
+# filter = the rule set used to detect failures
+# sshd filter is built into fail2ban — matches OpenSSH log patterns
+
+logpath  = /var/log/auth.log
+# Where SSH authentication events are logged
+# fail2ban tails this file looking for failure patterns
+
+maxretry = {{ common_fail2ban.maxretry }}
+# Ban after this many failed attempts — currently 5
+
+findtime = {{ common_fail2ban.findtime }}
+# Count failures within this window in seconds — currently 600 (10 min)
+# 5 failures within 10 minutes triggers a ban
+
+bantime  = {{ common_fail2ban.bantime }}
+# Ban duration in seconds — currently 3600 (1 hour)
+# After bantime the IP is automatically unbanned and can try again
+
+banaction = ufw
+# Use UFW to enforce bans instead of raw iptables
+# Keeps firewall rules consistent — all rules go through UFW

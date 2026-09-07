@@ -1,0 +1,38 @@
+---
+# roles/common/tasks/users.yml
+# Creates local operator accounts on every managed host.
+# All account definitions live in vars/main.yml — never hardcode
+# usernames or keys in this file.
+# Runs before SSH hardening so accounts exist when SSH locks down
+# the allowed_users list.
+
+- name: Create local user accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    comment: "{{ item.comment }}"
+    groups: "{{ item.groups }}"
+    append: true
+    # append: true — add to the specified groups without removing
+    # the user from any other groups they already belong to
+    shell: "{{ item.shell }}"
+    state: present
+    # present = create if missing, skip if already exists
+    create_home: true
+    # create_home = create /home/<username> if it does not exist
+  loop: "{{ common_local_accounts }}"
+  tags: [common, common_users]
+
+- name: Set up SSH authorized keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    state: present
+    key: "{{ lookup('file', item.pubkey_file) }}"
+    # lookup('file', path) reads the public key file from the
+    # Ansible control machine (your Parrot laptop) at runtime
+    # The key content gets written to ~/.ssh/authorized_keys
+    # on the remote server for the specified user
+    exclusive: false
+    # exclusive: false — do not remove other keys that may already
+    # exist in authorized_keys. Only add this key if missing.
+  loop: "{{ common_local_accounts }}"
+  tags: [common, common_users]

@@ -109,11 +109,36 @@ common_fail2ban:
 
 # ── UFW firewall ──────────────────────────────────────────────────
 common_ufw:
-  ssh_allow_from:
-    - "{{ mgt_subnet }}"
-    # Only allow SSH from 192.168.80.0/24 — the management network
-    # SSH from any other network is blocked at the firewall level
-    # This is the primary network-level access control
+  default_incoming: deny
+  # deny = block all inbound traffic unless explicitly allowed below
+  default_outgoing: allow
+  # allow = permit all outbound traffic — needed for apt, NTP, etc.
+
+  rules:
+    - description: "SSH from management subnet"
+      port: "{{ ssh_port }}"
+      proto: tcp
+      src: "{{ mgt_subnet }}"
+
+    - description: "Proxmox web UI and API from management subnet"
+      port: "8006"
+      proto: tcp
+      src: "{{ mgt_subnet }}"
+
+    - description: "Corosync cluster communication"
+      port: "5405"
+      proto: udp
+      src: "{{ mgt_subnet }}"
+
+    - description: "Proxmox SPICE proxy"
+      port: "3128"
+      proto: tcp
+      src: "{{ mgt_subnet }}"
+
+    - description: "VM live migration"
+      port: "60000:60050"
+      proto: tcp
+      src: "{{ mgt_subnet }}"
 
 # ── Sysctl hardening ──────────────────────────────────────────────
 common_sysctl_settings:

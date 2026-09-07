@@ -1,0 +1,26 @@
+---
+# roles/common/tasks/motd.yml
+# Configures the login banner shown when someone SSHs into the server.
+# The banner text is defined in common_motd in vars/main.yml.
+# Replaces the default Proxmox/Debian MOTD with a clean CS3 banner.
+
+- name: Write login banner
+  ansible.builtin.copy:
+    content: "{{ common_motd }}"
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [common, common_motd]
+
+- name: Remove dynamic MOTD scripts
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/update-motd.d/10-uname
+    - /etc/update-motd.d/10-help-text
+  # These scripts generate dynamic MOTD content that overwrites
+  # our static banner. Removing them keeps the banner clean.
+  # failed_when is not needed — absent is idempotent if file missing
+  tags: [common, common_motd]
