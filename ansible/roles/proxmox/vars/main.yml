@@ -1,0 +1,87 @@
+---
+# roles/proxmox/vars/main.yml
+# Variables for the proxmox role.
+# Applied to every Proxmox node — shared config across all nodes.
+# Node-specific overrides live in roles/proxmox_cs3pve/vars/main.yml.
+# This is the single place to change cluster-wide Proxmox config.
+
+# ── Repositories ──────────────────────────────────────────────────
+proxmox_enterprise_repo_file: "/etc/apt/sources.list.d/pve-enterprise.list"
+proxmox_ceph_enterprise_repo_file: "/etc/apt/sources.list.d/ceph.list"
+# These files ship with Proxmox and require a paid subscription.
+# They are removed by the common role repos.yml task.
+# Defined here for reference — actual removal happens in common.
+
+proxmox_community_repo_file: "/etc/apt/sources.list.d/pve-no-subscription.list"
+# The free community repo file written by common/tasks/repos.yml
+# Proxmox VE trixie — identical packages to enterprise, no SLA
+
+# ── Datacenter settings ───────────────────────────────────────────
+proxmox_datacenter_config: "/etc/pve/datacenter.cfg"
+# Path to the Proxmox datacenter config file
+# Managed by Proxmox cluster filesystem — only edit via pvesh or
+# the template task below, never with a text editor directly
+
+proxmox_datacenter_settings:
+  keyboard: "en-us"
+  # Keyboard layout for the noVNC console
+  # en-us = standard US keyboard layout
+
+  language: "en"
+  # Web UI language
+
+  max_workers: 4
+  # Maximum number of parallel workers for bulk operations
+  # e.g. starting multiple VMs simultaneously
+  # 4 = safe default for a single node with multiple cores
+
+  migration_type: "secure"
+  # secure = encrypt VM migration traffic with TLS
+  # Always use secure — unencrypted migration sends RAM contents
+  # over the network in plaintext
+
+  ha_shutdown_policy: "freeze"
+  # What to do with HA-managed VMs when a node shuts down
+  # freeze = leave VMs in their current state
+  # Safe default for a single-node setup without real HA
+
+# ── Network ───────────────────────────────────────────────────────
+proxmox_network_config: "/etc/network/interfaces"
+# Path written by the interfaces.j2 template
+# ifupdown2 applies changes from this file without a reboot
+
+# ── API tokens ────────────────────────────────────────────────────
+proxmox_api_token_name: "tofu"
+# Token name appended to the username: opentofu@pve!tofu
+# The actual token secret is stored in tofu/secrets.sops.yaml
+
+proxmox_api_token_user: "opentofu@pve"
+# The Proxmox internal realm user that owns the token
+# Created by the users.yml task before the token is generated
+
+proxmox_api_token_privileges:
+  - "VM.Allocate"
+  - "VM.Clone"
+  - "VM.Config.CDROM"
+  - "VM.Config.CPU"
+  - "VM.Config.Cloudinit"
+  - "VM.Config.Disk"
+  - "VM.Config.HWType"
+  - "VM.Config.Memory"
+  - "VM.Config.Network"
+  - "VM.Config.Options"
+  - "VM.Monitor"
+  - "VM.Audit"
+  - "VM.PowerMgmt"
+  - "VM.Snapshot"
+  - "Datastore.AllocateSpace"
+  - "Datastore.AllocateTemplate"
+  - "Datastore.Audit"
+  - "SDN.Use"
+  - "Sys.Audit"
+  - "Sys.Console"
+  - "Sys.Modify"
+  # These are the exact privileges OpenTofu needs to provision VMs.
+  # Scoped to what is actually needed — not full Administrator.
+  # This follows the principle of least privilege:
+  # if the token is compromised, the blast radius is limited.

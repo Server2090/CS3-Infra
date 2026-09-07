@@ -1,0 +1,30 @@
+---
+# roles/proxmox/tasks/main.yml
+# Table of contents for the proxmox role.
+# Runs after the common role on every Proxmox node.
+# Order matters:
+#   1. repos      — fix Proxmox-specific apt sources
+#   2. datacenter — configure datacenter-wide settings
+#   3. network    — write /etc/network/interfaces
+#   4. users      — create Proxmox API users
+#   5. api_tokens — create OpenTofu API token
+
+- name: Configure Proxmox repositories
+  ansible.builtin.include_tasks: repos.yml
+  tags: [proxmox, proxmox_repos]
+
+- name: Configure datacenter settings
+  ansible.builtin.include_tasks: datacenter.yml
+  tags: [proxmox, proxmox_datacenter]
+
+- name: Configure network bridges
+  ansible.builtin.include_tasks: network.yml
+  tags: [proxmox, proxmox_network]
+
+- name: Configure Proxmox API users
+  ansible.builtin.include_tasks: users.yml
+  tags: [proxmox, proxmox_users]
+
+- name: Create OpenTofu API token
+  ansible.builtin.include_tasks: api_tokens.yml
+  tags: [proxmox, proxmox_api_tokens]

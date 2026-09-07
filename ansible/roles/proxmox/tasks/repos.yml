@@ -1,0 +1,28 @@
+---
+# roles/proxmox/tasks/repos.yml
+# Configures Proxmox-specific apt repositories.
+# The enterprise repo files are already removed by common/tasks/repos.yml.
+# This task adds the Proxmox no-subscription repo and updates the cache.
+
+- name: Add Proxmox VE no-subscription repo
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.proxmox.com/debian/pve {{ proxmox_release }} pve-no-subscription"
+    # proxmox_release = trixie — from group_vars/proxmox.yml
+    # pve-no-subscription = free community repo
+    state: present
+    filename: pve-no-subscription
+  tags: [proxmox, proxmox_repos]
+
+- name: Update apt cache after repo changes
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [proxmox, proxmox_repos]
+
+- name: Upgrade all Proxmox packages
+  ansible.builtin.apt:
+    upgrade: dist
+    # dist = full distribution upgrade
+    # Ensures all Proxmox packages are on the latest version
+    # in the no-subscription repo before we configure anything
+  tags: [proxmox, proxmox_repos]

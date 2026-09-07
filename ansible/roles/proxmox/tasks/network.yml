@@ -1,0 +1,31 @@
+---
+# roles/proxmox/tasks/network.yml
+# Writes /etc/network/interfaces from the interfaces.j2 template.
+# Bridge definitions come from proxmox_bridges in group_vars/proxmox.yml.
+# Changes are applied with ifreload — no reboot needed.
+#
+# WARNING: This task changes live network configuration.
+# Always run with --diff first to review changes before applying:
+#   ansible-playbook site.yml -t proxmox_network --diff --check
+
+- name: Install ifupdown2
+  ansible.builtin.apt:
+    name: ifupdown2
+    state: present
+    # ifupdown2 is required for ifreload to work
+    # ifreload applies network changes without a full reboot
+    # Standard ifupdown does not support hot-reload of bridge config
+  tags: [proxmox, proxmox_network]
+
+- name: Write network interfaces config
+  ansible.builtin.template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+    # backup: true — keeps a timestamped copy of the previous
+    # interfaces file. Immediate fallback if something goes wrong.
+  notify: Apply network config
+  tags: [proxmox, proxmox_network]

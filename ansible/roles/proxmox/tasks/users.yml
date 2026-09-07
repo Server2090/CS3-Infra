@@ -1,0 +1,39 @@
+---
+# roles/proxmox/tasks/users.yml
+# Creates Proxmox API users in the web UI and API.
+# These are separate from Linux system accounts.
+# pam realm users (op) must have a matching Linux account first —
+# that is created by common/tasks/users.yml which runs before this.
+# pve realm users (opentofu) are Proxmox-internal only.
+
+- name: Create Proxmox API users
+  ansible.builtin.command:
+    cmd: >
+      pveum user add {{ item.name }}@{{ item.realm }}
+      --comment "{{ item.comment }}"
+    # pveum user add = Proxmox user management command
+    # Creates the user in the Proxmox authentication database
+  register: pveum_result
+  failed_when:
+    - pveum_result.rc != 0
+    - "'already exists' not in pveum_result.stderr"
+  # Only fail if the error is not "already exists"
+  # Running twice is safe — second run skips cleanly
+  changed_when: pveum_result.rc == 0
+  loop: "{{ proxmox_users }}"
+  tags: [proxmox, proxmox_users]
+
+- name: Assign Administrator role to Proxmox users
+  ansible.builtin.command:
+    cmd: >
+      pveum aclmod /
+      --users {{ item.name }}@{{ item.realm }}
+      --roles {{ item.role }}
+    # pveum aclmod = modify access control list
+    # / = root path — applies the role to the entire Proxmox tree
+    # Administrator role gives full access to all resources
+  changed_when: false
+  # pveum aclmod is idempotent but always returns 0
+  # changed_when: false prevents false positives in output
+  loop: "{{ proxmox_users }}"
+  tags: [proxmox, proxmox_users]

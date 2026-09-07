@@ -1,0 +1,13 @@
+---
+# roles/proxmox/handlers/main.yml
+# Handlers for the proxmox role.
+# Only run when notified by a task that reported a change.
+
+- name: Apply network config
+  ansible.builtin.command:
+    cmd: ifreload -a
+    # ifreload -a = reload all network interfaces from
+    # /etc/network/interfaces without a full reboot
+    # Only interfaces that changed are reloaded
+    # The management interface stays up during reload
+  # No changed_when needed — this only runs when notified

@@ -1,0 +1,39 @@
+# /etc/network/interfaces
+# Managed by Ansible — do not edit manually
+# Changes belong in group_vars/proxmox.yml under proxmox_bridges
+# Apply changes with: ifreload -a
+
+# ── Loopback ──────────────────────────────────────────────────────
+auto lo
+iface lo inet loopback
+
+# ── Physical NICs ─────────────────────────────────────────────────
+# Physical NICs have no IP — they are bridge ports only
+# All traffic flows through the bridges defined below
+auto nic0
+iface nic0 inet manual
+    # nic0 = first physical NIC — plugged into management network
+    # Carries vmbr0 traffic
+
+auto nic1
+iface nic1 inet manual
+    # nic1 = second physical NIC — used as OPNsense WAN interface
+    # Carries vmbr2 traffic
+
+# ── Bridges ───────────────────────────────────────────────────────
+{% for bridge in proxmox_bridges %}
+auto {{ bridge.name }}
+{% if bridge.mode == 'dhcp' %}
+iface {{ bridge.name }} inet dhcp
+{% else %}
+iface {{ bridge.name }} inet manual
+{% endif %}
+    bridge-ports {{ bridge.ports }}
+    bridge-stp {% if bridge.stp %}on{% else %}off{% endif %}
+
+    bridge-fd {{ bridge.fd }}
+    # {{ bridge.comment }}
+
+{% endfor %}
+# ── Source includes ───────────────────────────────────────────────
+source /etc/network/interfaces.d/*

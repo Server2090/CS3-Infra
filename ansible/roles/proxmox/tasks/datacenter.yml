@@ -1,0 +1,25 @@
+---
+# roles/proxmox/tasks/datacenter.yml
+# Configures Proxmox datacenter-wide settings.
+# These settings apply to the entire cluster (or single node).
+# Written to /etc/pve/datacenter.cfg via the Proxmox pvesh API.
+# We use pvesh instead of writing the file directly because
+# /etc/pve is a FUSE filesystem managed by Proxmox cluster — 
+# direct writes can cause corruption or be overwritten.
+
+- name: Configure datacenter settings
+  ansible.builtin.command:
+    cmd: >
+      pvesh set /cluster/options
+      --keyboard {{ proxmox_datacenter_settings.keyboard }}
+      --language {{ proxmox_datacenter_settings.language }}
+      --max_workers {{ proxmox_datacenter_settings.max_workers }}
+      --migration_type {{ proxmox_datacenter_settings.migration_type }}
+      --ha-shutdown-policy {{ proxmox_datacenter_settings.ha_shutdown_policy }}
+    # pvesh set = Proxmox API call to update cluster options
+    # Reads all values from proxmox_datacenter_settings in vars/main.yml
+  changed_when: false
+  # changed_when: false — pvesh always returns 0 whether it changed
+  # anything or not, so we cannot detect real changes.
+  # This is acceptable — datacenter settings are idempotent by nature.
+  tags: [proxmox, proxmox_datacenter]
