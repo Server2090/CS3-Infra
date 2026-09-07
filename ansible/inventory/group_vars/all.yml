@@ -1,0 +1,57 @@
+---
+# ansible/inventory/group_vars/all.yml
+# Variables applied to every host in the inventory regardless of group.
+# This is the place for values that are truly global — domain, NTP,
+# network, and connection settings that every role can reference.
+# If a value only applies to Proxmox nodes, it belongs in proxmox.yml.
+
+# ── Lab identity ──────────────────────────────────────────────────
+lab_domain: "cs3.lab"
+# Internal domain — matches the FQDN set during Proxmox install
+# Used for hostnames, DNS records, and certificate subjects
+
+lab_timezone: "America/New_York"
+# Adjust if the server is in a different timezone
+# Used by the common role to set the system clock correctly
+# Full list: timedatectl list-timezones
+
+# ── Network ───────────────────────────────────────────────────────
+# Management network — where Ansible connects to the server
+mgt_subnet: "192.168.80.0/24"
+# Used by UFW rules to restrict SSH access to this subnet only
+# Nobody outside this range can SSH in even if they have a key
+
+default_gateway: "192.168.80.1"
+# OPNsense or your existing router on the management network
+# Used in the network interfaces template for the default route
+
+# ── NTP ───────────────────────────────────────────────────────────
+# Public NTP pool servers — used until an internal NTP is deployed
+# Chrony will sync to all three and pick the most accurate source
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+  - "2.pool.ntp.org"
+
+# ── Syslog ────────────────────────────────────────────────────────
+# Placeholder — set this once you have a log aggregator running
+# The syslog forwarding task checks this and skips if empty
+syslog_server: ""
+
+# ── SSH ───────────────────────────────────────────────────────────
+ssh_port: 22
+# Standard port — access is restricted to mgt_subnet via UFW
+# so there is no need to obscure it with a non-standard port
+
+# ── Ansible connection ────────────────────────────────────────────
+ansible_user: root
+# Proxmox requires root for API and system-level tasks
+# The common role creates a non-root operator account after
+# first connection — but Ansible itself always connects as root
+
+# ── Feature flags ─────────────────────────────────────────────────
+internet_available: true
+# Set to true — the R440 has internet access through your network
+# Tasks that require internet (package installs, repo updates)
+# check this flag before running so they can be skipped safely
+# in air-gapped environments

@@ -1,0 +1,129 @@
+---
+# ansible/inventory/group_vars/proxmox.yml
+# Variables applied to every host in the proxmox group.
+# These are Proxmox-specific settings that every node shares.
+# Node-specific overrides (ZFS layout, hardware) live in
+# roles/proxmox_cs3pve/vars/main.yml
+
+# ── Proxmox repositories ──────────────────────────────────────────
+proxmox_enterprise_repo: false
+# false = disable the enterprise repo which requires a paid subscription
+# Without a valid subscription key apt update throws an auth error
+# blocking all package installs — always disable on community installs
+
+proxmox_community_repo: true
+# true = enable the free no-subscription repo
+# Identical packages to enterprise, just no SLA or support contract
+
+proxmox_release: "trixie"
+# Debian codename for the Proxmox base
+# Proxmox VE 8.x = bookworm (Debian 12)
+# Used to build the correct apt repo URL
+# Check your Proxmox version in the web UI under Node > Summary
+
+# ── Cluster ───────────────────────────────────────────────────────
+proxmox_cluster_enabled: false
+# false = single node, no cluster setup
+# Cluster tasks in the proxmox role check this flag and skip
+# Set to true only when adding a second node in the future
+
+proxmox_cluster_name: "cs3"
+# Name shown in Proxmox web UI — identifies this cluster
+# Used even in single-node mode as the datacenter name
+
+proxmox_cluster_primary: "pve"
+# The node that would create the cluster if clustering is enabled
+# Matches the inventory hostname in hosts.yml
+
+proxmox_cluster_primary_ip: "192.168.80.30"
+# Management IP of the primary node
+# Used for Corosync cluster communication when clustering is enabled
+
+# ── Network bridges ───────────────────────────────────────────────
+# These match the bridge layout from the old /etc/network/interfaces
+# Each bridge is defined here and rendered by the interfaces.j2 template
+
+proxmox_bridges:
+  - name: vmbr0
+    comment: "RMU CyberLab — management and general VM traffic"
+    ports: nic0
+    # nic0 = first physical NIC, plugged into management network
+    mode: dhcp
+    # dhcp = gets IP from your existing DHCP server
+    # This is how the node itself reaches the network
+    stp: false
+    fd: 0
+
+  - name: vmbr1
+    comment: "Cyber Range internal bridge — isolated VM traffic"
+    ports: none
+    # none = no physical NIC attached
+    # This is a purely internal bridge — VMs on this bridge
+    # can only talk to each other, not the physical network
+    mode: manual
+    stp: false
+    fd: 0
+
+  - name: vmbr2
+    comment: "CyberRange OPNsense WAN — physical NIC for WAN traffic"
+    ports: nic1
+    # nic1 = second physical NIC, used as OPNsense WAN interface
+    # OPNsense VM attaches here for its WAN connection
+    mode: manual
+    stp: false
+    fd: 0
+
+  - name: vmbr3
+    comment: "Lab LAN bridge — internal lab network segment"
+    ports: none
+    # none = no physical NIC, internal bridge only
+    mode: manual
+    stp: false
+    fd: 0
+
+# ── Packages ──────────────────────────────────────────────────────
+proxmox_packages_install:
+  - htop          # interactive process viewer
+  - iotop         # disk I/O monitor — useful for ZFS troubleshooting
+  - iftop         # network bandwidth monitor per interface
+  - net-tools     # ifconfig, netstat — useful for network debugging
+  - curl          # HTTP client — needed for scripts and API calls
+  - wget          # HTTP downloader
+  - git           # version control — needed for GitOps workflows
+  - lm-sensors    # hardware temperature and fan monitoring
+  - smartmontools # SMART drive health — critical for monitoring SSDs
+  - chrony        # NTP client — more reliable than systemd-timesyncd
+  - nvme-cli      # NVMe drive management — useful for SSD health checks
+
+proxmox_packages_remove:
+  - os-prober
+  # os-prober detects other operating systems for grub
+  # Unnecessary on a hypervisor and causes noisy grub output
+  # Safe to remove — Proxmox manages its own bootloader
+
+# ── Storage ───────────────────────────────────────────────────────
+proxmox_local_storage: "local"
+# Built-in local storage for ISOs, snippets, backups
+# Lives at /var/lib/vz on the node filesystem
+
+proxmox_zfs_storage: "vmdata"
+# ZFS stripe pool for VM disks — created by proxmox_cs3pve role
+# Backed by /dev/sda + /dev/sdb (the two 1.75TB Samsung SSDs)
+# Named vmdata to be descriptive — not the default local-zfs
+
+# ── Proxmox API users ─────────────────────────────────────────────
+proxmox_users:
+  - name: "op"
+    realm: "pam"
+    # pam = Linux PAM — uses the local op Linux account
+    # This account is created by the common role first
+    role: "Administrator"
+    comment: "Daily operator account — managed by Ansible"
+
+  - name: "opentofu"
+    realm: "pve"
+    # pve = Proxmox internal realm — no Linux account needed
+    # This user only exists inside Proxmox, cannot SSH anywhere
+    # OpenTofu uses this user's API token to provision VMs
+    role: "Administrator"
+    comment: "OpenTofu provisioning user — managed by Ansible"
