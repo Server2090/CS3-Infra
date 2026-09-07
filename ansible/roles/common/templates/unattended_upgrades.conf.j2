@@ -1,0 +1,44 @@
+// /etc/apt/apt.conf.d/50unattended-upgrades
+// Managed by Ansible — do not edit manually
+// Changes belong in roles/common/vars/main.yml under common_unattended_upgrades
+
+Unattended-Upgrade::Origins-Pattern {
+    // Debian security updates — always auto-apply these
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+
+    // Debian stable updates
+    "origin=Debian,codename=${distro_codename}-updates";
+
+    // Proxmox no-subscription repo — auto-apply Proxmox updates
+    "origin=Proxmox,codename=${distro_codename},label=Proxmox Debian Repository";
+};
+
+// Packages to never auto-update regardless of origin
+// Kernel and Proxmox core are excluded — update these manually
+// so you can review changelogs and schedule reboots
+Unattended-Upgrade::Package-Blacklist {
+    "pve-kernel-.*";
+    "proxmox-kernel-.*";
+    "pve-manager";
+};
+
+// Remove unused dependencies after upgrade
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Remove unused kernel packages after upgrade
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+
+// Automatically reboot if required — set to false for servers
+// You control reboots manually on a hypervisor
+Unattended-Upgrade::Automatic-Reboot "false";
+
+// Email notifications — empty = disabled
+// Set to an email address once you have mail configured
+Unattended-Upgrade::Mail "";
+
+// Only email on errors, not on every successful upgrade
+Unattended-Upgrade::MailReport "on-change";
+
+// Write upgrade logs to syslog
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";

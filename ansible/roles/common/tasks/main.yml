@@ -5,7 +5,8 @@
 # Order matters — each step depends on the previous one:
 #   1. repos     — fix apt sources first so packages can install
 #   2. packages  — install tools before anything tries to use them
-#   3. ipv6      — disable IPv6 before SSH hardens
+#   3. unattended_upgrades — configure auto security updates
+#   4. ipv6      — disable IPv6 before SSH hardens
 #   4. users     — create accounts before SSH locks down allowed_users
 #   5. ssh       — harden SSH only after accounts exist
 #   6. fail2ban  — brute force protection after SSH is configured
@@ -21,6 +22,10 @@
 - name: Install and remove packages
   ansible.builtin.include_tasks: packages.yml
   tags: [common, common_packages]
+
+- name: Configure unattended upgrades
+  ansible.builtin.include_tasks: unattended_upgrades.yml
+  tags: [common, common_unattended_upgrades]
 
 - name: Disable IPv6
   ansible.builtin.include_tasks: ipv6.yml

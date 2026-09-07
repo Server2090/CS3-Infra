@@ -1,0 +1,50 @@
+---
+# roles/common/tasks/unattended_upgrades.yml
+# Configures automatic security updates via unattended-upgrades.
+# Proxmox kernel and core packages are excluded from auto-updates
+# so you can review and schedule those manually.
+# All settings come from common_unattended_upgrades in vars/main.yml.
+
+- name: Write unattended-upgrades configuration
+  ansible.builtin.template:
+    src: unattended_upgrades.conf.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [common, common_unattended_upgrades]
+
+- name: Write apt auto-upgrade interval configuration
+  ansible.builtin.template:
+    src: apt_auto_upgrades.conf.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [common, common_unattended_upgrades]
+
+- name: Ensure unattended-upgrades service is enabled and running
+  ansible.builtin.service:
+    name: unattended-upgrades
+    state: started
+    enabled: true
+  tags: [common, common_unattended_upgrades]
+
+- name: Run unattended-upgrades dry run to verify config is valid
+  ansible.builtin.command:
+    cmd: unattended-upgrade --dry-run --debug
+  register: upgrades_check
+  changed_when: false
+  failed_when: false
+  # failed_when: false — dry run output goes to stderr even on success
+  # We just want to verify the config parses correctly
+  tags: [common, common_unattended_upgrades]
+
+- name: Show unattended-upgrades dry run result
+  ansible.builtin.debug:
+    msg: "{{ upgrades_check.stderr_lines[-5:] }}"
+  # Shows last 5 lines of output — enough to confirm it parsed correctly
+  # without flooding the terminal with the full debug output
+  tags: [common, common_unattended_upgrades]

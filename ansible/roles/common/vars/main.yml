@@ -204,3 +204,18 @@ common_motd: |
   *                  Authorized access only. All activity                  *
   *                  is monitored and logged.                              *
   **************************************************************************
+
+# ── Unattended upgrades ───────────────────────────────────────────
+common_unattended_upgrades:
+  enabled: true
+  # true = configure and enable automatic security updates
+
+  reboot: false
+  # false = never automatically reboot after updates
+  # On a hypervisor you control reboots manually — an unexpected
+  # reboot would kill all running VMs
+
+  mail: ""
+  # Email address for upgrade notifications
+  # Leave empty until mail is configured on the server
+  # Set to an address once you have postfix or similar running
