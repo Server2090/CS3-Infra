@@ -17,7 +17,7 @@ terraform {
       # This is the community Proxmox provider maintained by bpg-dev.
       # The most complete and actively maintained Proxmox provider available.
 
-      version = "~> 0.111"
+      version = "~> 0.112"
       # ~> 0.111 = >= 0.111.0 AND < 0.112.0
       # Allows patch releases but not the next minor version.
       # The bpg/proxmox provider ships breaking changes between minors
