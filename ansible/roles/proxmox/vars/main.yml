@@ -35,16 +35,6 @@ proxmox_datacenter_settings:
   # e.g. starting multiple VMs simultaneously
   # 4 = safe default for a single node with multiple cores
 
-  migration_type: "secure"
-  # secure = encrypt VM migration traffic with TLS
-  # Always use secure — unencrypted migration sends RAM contents
-  # over the network in plaintext
-
-  ha_shutdown_policy: "freeze"
-  # What to do with HA-managed VMs when a node shuts down
-  # freeze = leave VMs in their current state
-  # Safe default for a single-node setup without real HA
-
 # ── Network ───────────────────────────────────────────────────────
 proxmox_network_config: "/etc/network/interfaces"
 # Path written by the interfaces.j2 template

@@ -1,25 +1,27 @@
 ---
 # roles/proxmox/tasks/datacenter.yml
-# Configures Proxmox datacenter-wide settings.
-# These settings apply to the entire cluster (or single node).
-# Written to /etc/pve/datacenter.cfg via the Proxmox pvesh API.
+# Configures Proxmox datacenter-wide settings via pvesh API.
 # We use pvesh instead of writing the file directly because
-# /etc/pve is a FUSE filesystem managed by Proxmox cluster — 
+# /etc/pve is a FUSE filesystem managed by Proxmox cluster —
 # direct writes can cause corruption or be overwritten.
+#
+# To see all valid options for your Proxmox version run:
+#   pvesh get /cluster/options --help
 
-- name: Configure datacenter settings
+- name: Configure datacenter keyboard layout
   ansible.builtin.command:
-    cmd: >
-      pvesh set /cluster/options
-      --keyboard {{ proxmox_datacenter_settings.keyboard }}
-      --language {{ proxmox_datacenter_settings.language }}
-      --max_workers {{ proxmox_datacenter_settings.max_workers }}
-      --migration_type {{ proxmox_datacenter_settings.migration_type }}
-      --ha-shutdown-policy {{ proxmox_datacenter_settings.ha_shutdown_policy }}
-    # pvesh set = Proxmox API call to update cluster options
-    # Reads all values from proxmox_datacenter_settings in vars/main.yml
+    cmd: pvesh set /cluster/options --keyboard en-us
   changed_when: false
-  # changed_when: false — pvesh always returns 0 whether it changed
-  # anything or not, so we cannot detect real changes.
-  # This is acceptable — datacenter settings are idempotent by nature.
+  tags: [proxmox, proxmox_datacenter]
+
+- name: Configure datacenter language
+  ansible.builtin.command:
+    cmd: pvesh set /cluster/options --language en
+  changed_when: false
+  tags: [proxmox, proxmox_datacenter]
+
+- name: Configure datacenter max workers
+  ansible.builtin.command:
+    cmd: pvesh set /cluster/options --max_workers 4
+  changed_when: false
   tags: [proxmox, proxmox_datacenter]
