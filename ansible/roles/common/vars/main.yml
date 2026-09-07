@@ -10,8 +10,8 @@
 # subscription. Without a valid key, apt update throws an auth error
 # that blocks all package installs. Remove them immediately.
 common_repos_remove:
-  - path: "/etc/apt/sources.list.d/pve-enterprise.list"
-  - path: "/etc/apt/sources.list.d/ceph.list"
+  - path: "/etc/apt/sources.list.d/pve-enterprise.sources"
+  - path: "/etc/apt/sources.list.d/ceph.sources"
 
 # ── Packages ──────────────────────────────────────────────────────
 common_packages_install:

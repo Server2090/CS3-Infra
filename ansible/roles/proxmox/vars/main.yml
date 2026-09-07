@@ -6,8 +6,8 @@
 # This is the single place to change cluster-wide Proxmox config.
 
 # ── Repositories ──────────────────────────────────────────────────
-proxmox_enterprise_repo_file: "/etc/apt/sources.list.d/pve-enterprise.list"
-proxmox_ceph_enterprise_repo_file: "/etc/apt/sources.list.d/ceph.list"
+proxmox_enterprise_repo_file: "/etc/apt/sources.list.d/pve-enterprise.sources"
+proxmox_ceph_enterprise_repo_file: "/etc/apt/sources.list.d/ceph.sources"
 # These files ship with Proxmox and require a paid subscription.
 # They are removed by the common role repos.yml task.
 # Defined here for reference — actual removal happens in common.
