@@ -1,0 +1,101 @@
+---
+# roles/proxmox_cs3pve/tasks/main.yml
+# Node-specific tasks for pve (Dell PowerEdge R440)
+# Runs after the shared proxmox role.
+# Handles hardware-specific setup that only applies to this machine.
+#
+# Order:
+#   1. zfs_pool   — create vmdata pool on first run only
+#   2. zfs_tune   — apply ARC cap and dataset settings
+#   3. storage     — register vmdata pool in Proxmox web UI
+
+# ── ZFS VM pool ───────────────────────────────────────────────────
+
+- name: Check if vmdata pool already exists
+  ansible.builtin.command:
+    cmd: zpool list vmdata
+  register: vmdata_check
+  failed_when: false
+  changed_when: false
+  # failed_when: false — zpool list returns exit code 1 if pool does not exist
+  # Without this line Ansible would treat that as a task failure and stop
+  # changed_when: false — checking never counts as a change in Ansible output
+  tags: [proxmox_cs3pve, zfs]
+
+- name: Create vmdata ZFS stripe pool
+  ansible.builtin.command:
+    cmd: >
+      zpool create -f
+      -o ashift={{ proxmox_vm_pool_ashift }}
+      -O compression={{ proxmox_vm_pool_compression }}
+      -O atime=off
+      -O xattr=sa
+      {{ proxmox_vm_pool }}
+      {{ proxmox_vm_drives | join(' ') }}
+  when: vmdata_check.rc != 0
+  # rc = return code from the zpool list command above
+  # rc != 0 means the pool does not exist — safe to create
+  # rc == 0 means the pool exists — this task is skipped entirely
+  # This is the idempotency guard — pool can never be wiped by a rerun
+  tags: [proxmox_cs3pve, zfs]
+
+- name: Set ZFS ARC max size
+  ansible.builtin.shell:
+    cmd: >
+      echo "options zfs zfs_arc_max={{ proxmox_arc_max_gb | int * 1024 * 1024 * 1024 }}"
+      > /etc/modprobe.d/zfs.conf
+  args:
+    creates: /etc/modprobe.d/zfs.conf
+  # creates: — only runs if this file does not exist yet
+  # Converts proxmox_arc_max_gb (8) to bytes for the kernel parameter
+  # 8 * 1024 * 1024 * 1024 = 8589934592 bytes = 8GB
+  # Written to /etc/modprobe.d/zfs.conf so it persists across reboots
+  tags: [proxmox_cs3pve, zfs]
+
+- name: Apply ARC limit immediately without rebooting
+  ansible.builtin.shell:
+    cmd: >
+      echo {{ proxmox_arc_max_gb | int * 1024 * 1024 * 1024 }}
+      > /sys/module/zfs/parameters/zfs_arc_max
+  changed_when: false
+  # changed_when: false — writing to /sys is always idempotent
+  # This applies the ARC limit to the running kernel right now
+  # The modprobe.d file above makes it survive reboots
+  # Without this line the limit only takes effect after next boot
+  tags: [proxmox_cs3pve, zfs]
+
+- name: Verify vmdata pool is healthy
+  ansible.builtin.command:
+    cmd: zpool status vmdata
+  register: vmdata_status
+  changed_when: false
+  # changed_when: false — status check is read-only, never a change
+  tags: [proxmox_cs3pve, zfs]
+
+- name: Show vmdata pool status
+  ansible.builtin.debug:
+    msg: "{{ vmdata_status.stdout_lines }}"
+  # Prints the zpool status output to the Ansible run log
+  # Makes it easy to confirm the pool is ONLINE after creation
+  tags: [proxmox_cs3pve, zfs]
+
+# ── Proxmox storage registration ──────────────────────────────────
+
+- name: Register vmdata pool in Proxmox storage
+  ansible.builtin.command:
+    cmd: >
+      pvesm add zfspool vmdata
+      --pool vmdata
+      --content images,rootdir
+      --nodes pve
+  register: pvesm_result
+  failed_when:
+    - pvesm_result.rc != 0
+    - "'already exists' not in pvesm_result.stderr"
+  # failed_when with two conditions:
+  # Only fail if the command errored AND the error is not "already exists"
+  # If Proxmox says "already exists" that means the storage is registered
+  # and we treat that as success — idempotent behavior
+  changed_when: pvesm_result.rc == 0
+  # Only mark as changed if the command actually succeeded (new registration)
+  tags: [proxmox_cs3pve, storage]

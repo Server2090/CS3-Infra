@@ -1,0 +1,49 @@
+---
+# roles/proxmox_cs3pve/vars/main.yml
+# Node-specific variables for pve (Dell PowerEdge R440, 192.168.80.30)
+# This file describes the physical hardware of this specific machine.
+# Shared Proxmox config lives in group_vars/proxmox.yml instead.
+
+# ── Node identity ─────────────────────────────────────────────────
+proxmox_node_name: "pve"
+proxmox_node_ip: "192.168.80.30"
+proxmox_node_hardware: "Dell PowerEdge R440"
+
+# ── OS pool ───────────────────────────────────────────────────────
+# Created by the Proxmox installer — Ansible verifies it, does not create it
+proxmox_os_pool: "rpool"
+proxmox_os_drive: "/dev/sdc"
+# 111.79 GiB Intel SSDSC2BB120G7R
+# Single drive, ZFS RAID0, ashift=12, lz4 compression
+# Created during install — Ansible only checks health, never recreates
+
+# ── VM data pool ──────────────────────────────────────────────────
+# Created by Ansible on first run — never recreated if pool exists
+proxmox_vm_pool: "vmdata"
+proxmox_vm_pool_type: "stripe"
+# stripe = RAID0 across both drives — maximum usable space (~3.5 TiB)
+
+proxmox_vm_drives:
+  - "/dev/sda"
+  # 1.75 TiB Samsung MZ7KM1T9 (PM863a enterprise SATA SSD)
+  - "/dev/sdb"
+  # 1.75 TiB Samsung MZ7KM1T9 (PM863a enterprise SATA SSD)
+
+proxmox_vm_pool_ashift: 12
+# Samsung PM863a uses 4K physical sectors
+# ashift=12 = 2^12 = 4096 byte minimum write size
+# Must match physical sector size — cannot be changed after creation
+
+proxmox_vm_pool_compression: "lz4"
+# lz4 compression — faster than drive speed on modern hardware
+# Reduces write amplification, extends SSD life
+
+# ── ZFS tuning ────────────────────────────────────────────────────
+# ARC = Adaptive Replacement Cache — ZFS's RAM cache
+# On a hypervisor, ZFS ARC competes with VM RAM for memory
+# We cap it so VMs always have enough RAM available
+# Formula: leave ~4GB for Proxmox OS + however much RAM your VMs need
+# R440 RAM is detected at runtime — this is a safe conservative cap
+proxmox_arc_max_gb: 8
+# 8GB ARC cap — adjust upward if you have spare RAM after VM allocation
+# Check current ARC usage with: arc_summary or cat /proc/spl/kstat/zfs/arcstats
