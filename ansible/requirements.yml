@@ -1,0 +1,23 @@
+---
+# ansible/requirements.yml
+# Ansible collection dependencies for cs3-infra.
+# Install all dependencies with:
+#   cd ansible && ansible-galaxy collection install -r requirements.yml
+#
+# This file ensures anyone setting up a new control machine can install
+# all required collections in one command rather than hunting through
+# task files to find what is needed.
+
+collections:
+  - name: ansible.posix
+    # Provides: authorized_key, sysctl, mount
+    # Used in: common/tasks/users.yml, common/tasks/sysctl.yml
+
+  - name: community.general
+    # Provides: ufw, timezone, proxmox_*
+    # Used in: common/tasks/ufw.yml, common/tasks/time.yml
+
+  - name: community.sops
+    # Provides: SOPS encrypted variable decryption at inventory stage
+    # Used in: inventory/group_vars/*.sops.yml
+    # Requires sops binary and age key to be present on control machine
