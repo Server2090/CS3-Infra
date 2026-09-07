@@ -38,13 +38,13 @@ common_packages_remove:
 # Non-root accounts created on every managed host.
 # Ansible connects as root — these are for human operators.
 #
-# op     — daily use account with sudo access
-# rescue — break-glass account for when op account is unavailable
+# cs3admin  — daily use shared operator account with sudo access
+# cs3rescue — break-glass account for when cs3admin is unavailable
 #
 # SSH public keys are read from the Ansible control machine.
 # Generate keys with:
-#   ssh-keygen -t ed25519 -f ~/.ssh/op@cs3.lab -C "op@cs3.lab"
-#   ssh-keygen -t ed25519 -f ~/.ssh/rescue@cs3.lab -C "rescue@cs3.lab"
+#   ssh-keygen -t ed25519 -f ~/.ssh/cs3admin@cs3.lab -C "cs3admin@cs3.lab"
+#   ssh-keygen -t ed25519 -f ~/.ssh/cs3rescue@cs3.lab -C "cs3rescue@cs3.lab"
 common_local_accounts:
   - name: cs3admin
     comment: "CS3 shared operator account — managed by Ansible"
@@ -56,7 +56,7 @@ common_local_accounts:
     # This public key gets pushed to ~/.ssh/authorized_keys on the server
 
   - name: cs3rescue
-    comment: "CS3 break-glass account — use only when op is unavailable"
+    comment: "CS3 break-glass account — use only when cs3admin is unavailable"
     groups: sudo
     shell: /bin/bash
     pubkey_file: "~/.ssh/cs3rescue@cs3.lab.pub"
@@ -114,17 +114,9 @@ common_ufw:
   default_outgoing: allow
   # allow = permit all outbound traffic — needed for apt, NTP, etc.
 
+  # Static rules — fixed source, always the primary management subnet
+  # Used for Proxmox cluster traffic that only ever comes from mgt_subnet
   rules:
-    - description: "SSH from management subnet"
-      port: "{{ ssh_port }}"
-      proto: tcp
-      src: "{{ mgt_subnet }}"
-
-    - description: "Proxmox web UI and API from management subnet"
-      port: "8006"
-      proto: tcp
-      src: "{{ mgt_subnet }}"
-
     - description: "Corosync cluster communication"
       port: "5405"
       proto: udp
@@ -139,6 +131,18 @@ common_ufw:
       port: "60000:60050"
       proto: tcp
       src: "{{ mgt_subnet }}"
+
+  # Per-subnet rules — looped over every subnet in mgt_subnets (all.yml)
+  # SSH and Proxmox web UI access is granted to every listed subnet.
+  # To grant access from a new location add its subnet to mgt_subnets.
+  subnet_rules:
+    - description: "SSH"
+      port: "{{ ssh_port }}"
+      proto: tcp
+
+    - description: "Proxmox web UI and API"
+      port: "8006"
+      proto: tcp
 
 # ── Sysctl hardening ──────────────────────────────────────────────
 common_sysctl_settings:
