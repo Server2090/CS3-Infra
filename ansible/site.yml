@@ -1,0 +1,44 @@
+---
+# ansible/site.yml
+# Master playbook for cs3-infra.
+#
+# Run the full playbook:
+#   ansible-playbook site.yml
+#
+# Run against a specific tag only:
+#   ansible-playbook site.yml -t common_ssh
+#   ansible-playbook site.yml -t proxmox_network
+#
+# Preview changes without applying them:
+#   ansible-playbook site.yml --check --diff
+#
+# Run with verbose output for debugging:
+#   ansible-playbook site.yml -v
+
+# ── Step 1: Common baseline ────────────────────────────────────────
+# Applies to every host — SSH hardening, firewall, NTP, packages.
+# Must run before the proxmox role because it installs dependencies
+# and creates the operator accounts proxmox tasks rely on.
+- name: Apply common configuration
+  hosts: proxmox
+  gather_facts: true
+  roles:
+    - role: common
+
+# ── Step 2: Proxmox shared config ─────────────────────────────────
+# Applies Proxmox-specific config shared across all nodes.
+# Repos, datacenter settings, network bridges, users, API tokens.
+- name: Apply shared Proxmox configuration
+  hosts: proxmox
+  gather_facts: true
+  roles:
+    - role: proxmox
+
+# ── Step 3: Node-specific config ──────────────────────────────────
+# Applies hardware-specific config for the CS3 R440.
+# ZFS pool creation, ARC tuning, storage registration.
+- name: Apply cs3pve node-specific configuration
+  hosts: pve
+  gather_facts: true
+  roles:
+    - role: proxmox_cs3pve
