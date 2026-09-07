@@ -113,12 +113,12 @@ proxmox_zfs_storage: "vmdata"
 
 # ── Proxmox API users ─────────────────────────────────────────────
 proxmox_users:
-  - name: "op"
+  - name: "cs3admin"
     realm: "pam"
-    # pam = Linux PAM — uses the local op Linux account
+    # pam = Linux PAM — uses the local cs3admin Linux account
     # This account is created by the common role first
     role: "Administrator"
-    comment: "Daily operator account — managed by Ansible"
+    comment: "CS3 shared operator account — managed by Ansible"
 
   - name: "opentofu"
     realm: "pve"
