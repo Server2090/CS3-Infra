@@ -1,43 +1,52 @@
 ---
 # roles/common/tasks/ufw.yml
 # Configures UFW firewall rules from vars/main.yml.
-# All rules are defined in common_ufw.rules — never hardcode
-# ports or sources in this file.
-# To add a rule: add an entry to common_ufw.rules and rerun.
-# To remove a rule: delete the entry and rerun.
+# Two types of rules:
+#   rules        — single source, applied once
+#   subnet_rules — applied once per subnet in mgt_subnets (all.yml)
+#
+# To allow a new location: add its subnet to mgt_subnets in all.yml
+# To add a new port rule: add it to common_ufw.rules in vars/main.yml
 
 - name: Set UFW default inbound policy
   community.general.ufw:
     direction: incoming
     policy: "{{ common_ufw.default_incoming }}"
-    # Currently: deny — block everything not explicitly allowed
   tags: [common, common_ufw]
 
 - name: Set UFW default outbound policy
   community.general.ufw:
     direction: outgoing
     policy: "{{ common_ufw.default_outgoing }}"
-    # Currently: allow — permit all outbound traffic
   tags: [common, common_ufw]
 
-- name: Apply UFW rules
+- name: Apply static UFW rules
   community.general.ufw:
     rule: allow
     port: "{{ item.port }}"
     proto: "{{ item.proto }}"
     src: "{{ item.src }}"
     comment: "{{ item.description }}"
-    # comment appears in ufw status output — makes rules readable
   loop: "{{ common_ufw.rules }}"
-  # loop iterates over every rule in common_ufw.rules
-  # Adding a new rule = adding one block to vars/main.yml
-  # Removing a rule = deleting that block and rerunning
+  tags: [common, common_ufw]
+
+- name: Apply per-subnet UFW rules
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.1.port }}"
+    proto: "{{ item.1.proto }}"
+    src: "{{ item.0.subnet }}"
+    comment: "{{ item.1.description }} from {{ item.0.comment }}"
+    # comment shows both what port and which subnet — easy to read
+    # in ufw status output
+  loop: "{{ mgt_subnets | product(common_ufw.subnet_rules) | list }}"
+  # product() creates every combination of subnet x rule
+  # e.g. 2 subnets x 2 rules = 4 UFW rules total
+  # item.0 = the subnet entry, item.1 = the rule entry
   tags: [common, common_ufw]
 
 - name: Enable UFW
   community.general.ufw:
     state: enabled
-    # Always last — enable only after all rules are applied
-    # Enabling before rules would immediately lock you out
   notify: Reload UFW
   tags: [common, common_ufw]

@@ -16,10 +16,21 @@ lab_timezone: "America/New_York"
 # Full list: timedatectl list-timezones
 
 # ── Network ───────────────────────────────────────────────────────
-# Management network — where Ansible connects to the server
+# Management networks — all subnets that need SSH and web UI access
+# Add new subnets here as needed — UFW rules loop over this list
+mgt_subnets:
+  - subnet: "192.168.80.0/24"
+    comment: "CS3 server management network"
+    # The network the R440 itself lives on
+
+  - subnet: "192.168.10.0/24"
+    comment: "Wheatley 120 room and access point network"
+    # The subnet your laptop connects from in the CS3 lab room
+    # Temporary until a dedicated management VLAN is configured
+
+# Primary management subnet — used for non-firewall references
 mgt_subnet: "192.168.80.0/24"
-# Used by UFW rules to restrict SSH access to this subnet only
-# Nobody outside this range can SSH in even if they have a key
+# Kept for backwards compatibility with other tasks that reference it
 
 default_gateway: "192.168.80.1"
 # OPNsense or your existing router on the management network
