@@ -34,5 +34,16 @@ terraform {
       # ~> 1.1 = >= 1.1.0 AND < 1.2.0
       # Stable release, actively maintained.
     }
+
+    tailscale = {
+      source  = "tailscale/tailscale"
+      # tailscale/tailscale = registry.opentofu.org/tailscale/tailscale
+      # Official Tailscale provider maintained by Tailscale Inc.
+      # Creates auth keys that register the VM automatically on apply.
+
+      version = "~> 0.29"
+      # ~> 0.17 = >= 0.17.0 AND < 0.18.0
+      # Pins the minor version — Tailscale follows semver strictly.
+    }
   }
 }
