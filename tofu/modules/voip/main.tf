@@ -43,10 +43,15 @@ resource "proxmox_download_file" "voip_debian13" {
   # Using a fixed name prevents re-downloads when the "latest" symlink
   # moves to a new point release — the file_name stays stable.
 
-  overwrite = false
-  # false = skip the download if the file already exists in Proxmox.
-  # Makes this resource idempotent — a second tofu apply does not
-  # trigger a re-download. Set to true only to force a fresh image.
+  overwrite           = false
+  # false = never re-download or clobber the file on future applies.
+
+  overwrite_unmanaged = true
+  # true = if the file already exists in Proxmox local storage but was
+  # NOT created by this OpenTofu state (e.g. downloaded by another project
+  # like cs3-hack-sqli), adopt it into this state without re-downloading.
+  # Without this, OpenTofu errors when it finds a file it did not create.
+  # The file contents are identical — no download occurs.
 }
 
 # ── VoIP VM ───────────────────────────────────────────────────────
