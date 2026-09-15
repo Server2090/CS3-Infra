@@ -42,6 +42,21 @@ provider "proxmox" {
     username = "root"
     # Root is required for Proxmox node SSH access.
     # The bpg/proxmox provider uses SSH for operations the
-    # API does not expose directly, such as uploading ISOs.
+    # API does not expose directly, such as importing cloud images
+    # onto ZFS storage and creating VM disks.
+
+    node {
+      name    = "pve"
+      address = "192.168.80.30"
+      # Maps the Proxmox node name to its IP address.
+      # Without this, the provider tries to DNS-resolve "pve" as a
+      # hostname — which fails on private networks where "pve" is not
+      # registered in DNS.
+      # name    = must exactly match the node name shown in the
+      #           Proxmox web UI and used in node_name attributes.
+      # address = the management IP of the Proxmox node.
+      # Add one node {} block per Proxmox node if you ever expand
+      # to a cluster — each node needs its own mapping.
+    }
   }
 }
