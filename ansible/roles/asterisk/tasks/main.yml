@@ -1,52 +1,45 @@
 ---
 # ansible/roles/asterisk/tasks/main.yml
 # Role entrypoint — imports all task files in order.
-# No actual tasks are defined here — each concern lives in
-# its own file so it can be read, debugged, and tagged independently.
+# Each file has one job. Read the filename to know what it does.
 #
-# Import order matters:
-#   1. install   — system packages and compiled Asterisk binary must
-#                  exist before any config files are written
-#   2. configure — config files reference the installed binary's paths
-#   3. firewall  — UFW rules protect the ports Asterisk opens
-#   4. fail2ban  — monitors Asterisk logs that now exist after install
+# Prerequisites: the common role must run before this role.
+# Common provides: ufw, fail2ban, curl, wget, cs3admin user, SSH hardening.
+# This role only adds what is Asterisk-specific on top of that base.
 #
-# To run only one section during development or debugging:
-#   ansible-playbook site.yml --limit voip --tags asterisk_install
-#   ansible-playbook site.yml --limit voip --tags asterisk_configure
+# Run one section only:
+#   ansible-playbook site.yml --limit voip --tags asterisk_packages
+#   ansible-playbook site.yml --limit voip --tags asterisk_user
+#   ansible-playbook site.yml --limit voip --tags asterisk_dirs
+#   ansible-playbook site.yml --limit voip --tags asterisk_compile
+#   ansible-playbook site.yml --limit voip --tags asterisk_service
 #   ansible-playbook site.yml --limit voip --tags asterisk_firewall
 #   ansible-playbook site.yml --limit voip --tags asterisk_fail2ban
-#
-# ansible.builtin.import_tasks vs ansible.builtin.include_tasks:
-#   import_tasks  = static, loaded at playbook parse time.
-#                   Tags applied to the import apply to all tasks inside.
-#                   Use this when the file is always needed.
-#   include_tasks = dynamic, loaded at runtime.
-#                   Tags on the include do NOT apply to tasks inside.
-#                   Use this for conditional includes (when: clauses).
-# We use import_tasks throughout — all four files are always needed.
 
-- name: Install Asterisk and dependencies
-  ansible.builtin.import_tasks: install.yml
-  tags: asterisk_install
-  # Tags let you re-run just this section:
-  #   ansible-playbook site.yml --limit voip --tags asterisk_install
-  # Useful after an Asterisk version bump or to add a new package.
+- name: Install packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: asterisk_packages
 
-- name: Configure Asterisk
-  ansible.builtin.import_tasks: configure.yml
-  tags: asterisk_configure
-  # Re-run after any change to vars/main.yml or templates/.
-  # This task notifies the "Reload Asterisk" handler so Asterisk
-  # picks up config changes without a full restart.
+- name: Create asterisk system user and group
+  ansible.builtin.import_tasks: user.yml
+  tags: asterisk_user
 
-- name: Configure firewall for Asterisk
+- name: Create Asterisk runtime directories
+  ansible.builtin.import_tasks: directories.yml
+  tags: asterisk_dirs
+
+- name: Compile and install Asterisk from source
+  ansible.builtin.import_tasks: compile.yml
+  tags: asterisk_compile
+
+- name: Install and enable Asterisk systemd service
+  ansible.builtin.import_tasks: service.yml
+  tags: asterisk_service
+
+- name: Configure firewall rules for SIP and RTP
   ansible.builtin.import_tasks: firewall.yml
   tags: asterisk_firewall
-  # Re-run when you add a new ATA subnet to ata_subnets in
-  # group_vars/voip.yml.
 
-- name: Configure fail2ban for Asterisk
+- name: Configure fail2ban jail for Asterisk SIP
   ansible.builtin.import_tasks: fail2ban.yml
   tags: asterisk_fail2ban
-  # Re-run when you change ban thresholds or whitelist entries.

@@ -1,0 +1,30 @@
+---
+# ansible/roles/asterisk/tasks/packages.yml
+# Installs packages needed to build and run Asterisk.
+# Does NOT install curl, wget, fail2ban, ufw — common handles those.
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    # Skip apt update if cache is under 1 hour old.
+    # Common already ran apt update — this avoids a redundant
+    # network call if the playbook runs within the same hour.
+
+- name: Install Asterisk build dependencies
+  ansible.builtin.apt:
+    name: "{{ asterisk_build_deps }}"
+    state: present
+
+- name: Install Asterisk runtime dependencies
+  ansible.builtin.apt:
+    name: "{{ asterisk_runtime_deps }}"
+    state: present
+
+- name: Enable and start qemu-guest-agent
+  ansible.builtin.systemd:
+    name: qemu-guest-agent
+    state: started
+    enabled: true
+    # After this runs, Proxmox shows 192.168.80.10 in the VM
+    # Summary tab and graceful shutdown works from the web UI.

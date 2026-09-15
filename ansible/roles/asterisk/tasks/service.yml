@@ -1,0 +1,62 @@
+---
+# ansible/roles/asterisk/tasks/service.yml
+# Installs the Asterisk systemd service unit and enables it.
+# Separated from compile.yml so you can update the service
+# definition without re-running the full compile sequence.
+
+- name: Install Asterisk systemd service file
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/asterisk.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Asterisk PBX and telephony daemon
+      Documentation=https://wiki.asterisk.org
+      After=network.target
+      # After=network.target — start only after the network is up.
+      # PJSIP binds to the network interface on startup — starting
+      # before the network is ready causes a bind failure and exit.
+
+      [Service]
+      Type=simple
+      User={{ asterisk_user }}
+      Group={{ asterisk_group }}
+
+      ExecStart=/usr/sbin/asterisk -f -U {{ asterisk_user }} -G {{ asterisk_group }}
+      # -f  run in foreground (required for systemd Type=simple)
+      # -U  run as this user
+      # -G  run as this group
+
+      ExecReload=/usr/sbin/asterisk -rx "core reload"
+      # Reloads config without dropping active calls.
+      # Used by the "Reload Asterisk" handler for config-only changes.
+
+      ExecStop=/usr/sbin/asterisk -rx "core stop gracefully"
+      # Finishes active calls before shutting down.
+
+      Restart=always
+      RestartSec=5
+      # Auto-restart after any crash. A phone system should self-heal.
+
+      LimitNOFILE=65536
+      # Raise the open file descriptor limit from the default 1024.
+      # Asterisk uses one file descriptor per active call plus many
+      # more for modules, config files, logs, and sockets.
+      # 65536 is the standard value for telephony applications —
+      # it prevents "too many open files" errors under call load.
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart Asterisk
+
+- name: Enable and start Asterisk service
+  ansible.builtin.systemd:
+    name: asterisk
+    state: started
+    enabled: true
+    daemon_reload: true
+    # daemon_reload: true — re-reads all systemd unit files before
+    # starting. Required after installing a new .service file so
+    # systemd sees it rather than using its stale cached version.

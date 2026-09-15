@@ -1,0 +1,29 @@
+---
+# ansible/roles/asterisk/tasks/user.yml
+# Creates the asterisk system user and group.
+# Asterisk runs as this unprivileged account — never as root.
+
+- name: Create asterisk system group
+  ansible.builtin.group:
+    name: "{{ asterisk_group }}"
+    system: true
+    # system: true = GID below 1000, marked as a service account.
+
+- name: Create asterisk system user
+  ansible.builtin.user:
+    name: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    groups:
+      - audio
+      # audio group = access to /dev/snd/* sound devices.
+      # No harm including it even if hardware audio is unused.
+    system: true
+    shell: /usr/sbin/nologin
+    # nologin = this account cannot open an interactive shell.
+    # Even if somehow compromised, an attacker cannot use it
+    # to log in interactively.
+    home: /var/lib/asterisk
+    create_home: false
+    # We create the home directory ourselves in directories.yml
+    # with explicit permissions rather than letting useradd
+    # create it with default 755 permissions.

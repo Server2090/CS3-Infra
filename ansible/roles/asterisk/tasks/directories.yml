@@ -1,0 +1,24 @@
+---
+# ansible/roles/asterisk/tasks/directories.yml
+# Creates all Asterisk runtime directories with correct ownership.
+# make install creates files owned by root — we set asterisk:asterisk
+# ownership here so the service can run without elevated privileges.
+
+- name: Create Asterisk runtime directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/var/lib/asterisk",       mode: "0750" }
+    - { path: "/var/lib/asterisk/moh",   mode: "0750" }
+    - { path: "{{ asterisk_log_dir }}",  mode: "0750" }
+    - { path: "{{ asterisk_run_dir }}",  mode: "0750" }
+    - { path: "{{ asterisk_spool_dir }}", mode: "0750" }
+    - { path: "{{ asterisk_spool_dir }}/tmp", mode: "0750" }
+    - { path: "{{ asterisk_config_dir }}", mode: "0750" }
+  # 0750 = owner rwx, group r-x, others ---
+  # Only the asterisk user and group can read config files
+  # (which contain SIP passwords) and log files.

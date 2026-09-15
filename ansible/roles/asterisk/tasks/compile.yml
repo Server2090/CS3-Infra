@@ -1,0 +1,156 @@
+---
+# ansible/roles/asterisk/tasks/compile.yml
+# Downloads, compiles, and installs Asterisk 22 LTS from source.
+# Fully idempotent — every step checks if its output already exists
+# and skips itself on re-runs. First run takes ~5-10 minutes.
+# Subsequent runs complete in seconds.
+
+# ── Check current state ───────────────────────────────────────────
+
+- name: Check if Asterisk source directory exists
+  ansible.builtin.stat:
+    path: "{{ asterisk_source_dir }}"
+  register: source_stat
+  # register saves the result so later tasks can check
+  # source_stat.stat.exists before running.
+
+- name: Check if Asterisk binary exists
+  ansible.builtin.stat:
+    path: /usr/sbin/asterisk
+  register: binary_stat
+  # If the binary exists, the entire compile/install block is skipped.
+  # This is the main idempotency guard — compilation is the slow step.
+
+# ── Download and extract ──────────────────────────────────────────
+
+- name: Create Asterisk source directory
+  ansible.builtin.file:
+    path: "{{ asterisk_source_dir }}"
+    state: directory
+    mode: "0755"
+  when: not source_stat.stat.exists
+
+- name: Download Asterisk 22 LTS source tarball
+  ansible.builtin.get_url:
+    url: "https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-{{ asterisk_version }}.tar.gz"
+    dest: "/usr/src/asterisk-{{ asterisk_version }}.tar.gz"
+    mode: "0644"
+  when: not source_stat.stat.exists
+
+- name: Extract Asterisk source tarball
+  ansible.builtin.unarchive:
+    src: "/usr/src/asterisk-{{ asterisk_version }}.tar.gz"
+    dest: "/usr/src/"
+    remote_src: true
+    # remote_src: true = file is already on the VM, not the control machine.
+    extra_opts:
+      - "--strip-components=1"
+      # Extracts directly into asterisk_source_dir instead of a
+      # versioned subdirectory like /usr/src/asterisk-22.x.x/
+  args:
+    creates: "{{ asterisk_source_dir }}/configure"
+    # Skip if configure already exists — source already extracted.
+  when: not source_stat.stat.exists
+
+# ── Prerequisites ─────────────────────────────────────────────────
+
+- name: Run Asterisk install_prereq script
+  ansible.builtin.command:
+    cmd: contrib/scripts/install_prereq install
+    chdir: "{{ asterisk_source_dir }}"
+    # install_prereq is Asterisk's own script that detects the OS
+    # and installs any remaining build dependencies via apt.
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    # Suppresses interactive prompts including the ITU country
+    # code prompt — without this the playbook hangs.
+  args:
+    creates: "{{ asterisk_source_dir }}/.prereq_done"
+    # Sentinel file — if present, skip this task.
+  when: not binary_stat.stat.exists
+
+- name: Mark install_prereq complete
+  ansible.builtin.file:
+    path: "{{ asterisk_source_dir }}/.prereq_done"
+    state: touch
+    mode: "0644"
+  when: not binary_stat.stat.exists
+
+# ── Compile ───────────────────────────────────────────────────────
+
+- name: Run ./configure
+  ansible.builtin.command:
+    cmd: >
+      ./configure
+      --with-jansson-bundled
+      --with-pjproject-bundled
+      --prefix=/usr
+      --sysconfdir=/etc
+      --localstatedir=/var
+    # --with-jansson-bundled    use Asterisk's own jansson copy to
+    #                           avoid Debian version conflicts.
+    # --with-pjproject-bundled  CRITICAL: use Asterisk's own PJSIP
+    #                           copy with all security patches applied.
+    #                           Debian 13's libpjproject has unpatched
+    #                           CVEs — this is why we compile from source.
+    # --prefix=/usr             binaries go to /usr/sbin/ (standard)
+    # --sysconfdir=/etc         config goes to /etc/asterisk/ (standard)
+    # --localstatedir=/var      logs/spool go under /var/ (standard)
+    chdir: "{{ asterisk_source_dir }}"
+  when: not binary_stat.stat.exists
+
+- name: Compile Asterisk
+  ansible.builtin.command:
+    cmd: make -j{{ ansible_processor_vcpus }}
+    # -j{{ ansible_processor_vcpus }} = parallel compilation using
+    # all available vCPUs. Ansible gathers this fact automatically.
+    # With 2 vCPUs: make -j2 — roughly halves compile time.
+    chdir: "{{ asterisk_source_dir }}"
+  when: not binary_stat.stat.exists
+
+- name: Install Asterisk binaries
+  ansible.builtin.command:
+    cmd: make install
+    # Copies compiled binaries and modules to final locations:
+    #   /usr/sbin/asterisk       main binary
+    #   /usr/lib/asterisk/       loadable modules (.so files)
+    #   /var/lib/asterisk/       sounds, MOH files
+    chdir: "{{ asterisk_source_dir }}"
+  when: not binary_stat.stat.exists
+
+- name: Install Asterisk sample configs
+  ansible.builtin.command:
+    cmd: make samples
+    # Installs heavily commented sample .conf files to /etc/asterisk/
+    # as reference. Our templates overwrite the ones we actually use.
+    chdir: "{{ asterisk_source_dir }}"
+  args:
+    creates: "{{ asterisk_config_dir }}/asterisk.conf"
+  when: not binary_stat.stat.exists
+
+- name: Install Asterisk logrotate config
+  ansible.builtin.command:
+    cmd: make config
+    # Installs logrotate config for /var/log/asterisk/
+    chdir: "{{ asterisk_source_dir }}"
+  args:
+    creates: /etc/logrotate.d/asterisk
+  when: not binary_stat.stat.exists
+
+# ── Fix ownership ─────────────────────────────────────────────────
+
+- name: Set asterisk ownership on all Asterisk directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    recurse: true
+    # recurse: true = applies to all files and subdirectories.
+    # make install creates files owned by root — reassign them
+    # so the service can read/write without root privileges.
+  loop:
+    - "{{ asterisk_config_dir }}"
+    - "{{ asterisk_log_dir }}"
+    - "{{ asterisk_run_dir }}"
+    - "{{ asterisk_spool_dir }}"
+    - /var/lib/asterisk
