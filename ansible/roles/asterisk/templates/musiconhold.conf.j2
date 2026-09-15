@@ -1,0 +1,43 @@
+; {{ ansible_managed }}
+; ansible/roles/asterisk/templates/musiconhold.conf.j2
+; Defines music on hold classes.
+; When a caller is placed on hold, Asterisk plays audio from the
+; class assigned to that call.
+
+[general]
+; No general settings needed for basic MOH.
+
+[{{ moh_class }}]
+; moh_class = "default" from vars/main.yml.
+; This name is referenced in extensions.conf when putting a call on hold.
+
+mode = files
+; files mode = play audio files from a directory in sequence.
+; Other modes: mp3 (streams an MP3 process), custom (runs any command).
+; files is the simplest and most reliable for a local setup.
+
+directory = /var/lib/asterisk/moh
+; Directory containing the audio files to play.
+; Asterisk ships sample MOH files here after "make install".
+; To change the hold music:
+;   1. Drop .wav or .ulaw files into /var/lib/asterisk/moh/
+;   2. Run: asterisk -rx "moh reload"
+;   No playbook run needed for audio file changes — only for
+;   config structure changes (adding a new class, changing directory).
+
+random = yes
+; yes = play files in random order rather than alphabetical sequence.
+; Prevents callers from always hearing the same song first.
+
+; ── To add more music classes ──────────────────────────────────────────────
+; Add a new entry to vars/main.yml if you want multiple classes.
+; Example for a second class:
+;
+; [announcements]
+; mode = files
+; directory = /var/lib/asterisk/moh/announcements
+; random = no
+;
+; Then reference it in extensions.conf with:
+;   Set(CHANNEL(musicclass)=announcements)
+;   before a Dial() or Queue() application.

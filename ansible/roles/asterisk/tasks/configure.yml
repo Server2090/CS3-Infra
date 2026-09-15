@@ -1,0 +1,70 @@
+---
+# ansible/roles/asterisk/tasks/configure.yml
+# Renders all Asterisk config templates onto the VM.
+# Triggers a reload (not full restart) when any config changes
+# so active calls are not dropped during a config update.
+#
+# Three config files managed here:
+#   pjsip.conf        — SIP transport, ATA endpoints, extensions
+#   extensions.conf   — dialplan: who can call who and how
+#   musiconhold.conf  — hold music class definition
+
+# ── Load encrypted secrets ────────────────────────────────────────
+
+- name: Load SOPS-encrypted SIP secrets
+  community.sops.load_vars:
+    file: "{{ inventory_dir }}/group_vars/voip.sops.yml"
+    # inventory_dir is an Ansible magic variable that always points
+    # to the inventory directory regardless of where you run the
+    # playbook from. Avoids hardcoding a path that breaks if the
+    # repo is cloned to a different location.
+    # community.sops.load_vars decrypts the file using the age key
+    # at ~/.config/sops/age/keys.txt and loads the values as
+    # Ansible variables — available to all subsequent tasks and
+    # templates in this play.
+    # The decrypted values exist only in memory — never written
+    # to disk on the VM or the control machine.
+  no_log: true
+  # no_log: true — prevents Ansible from printing the task result
+  # to the terminal. Without this, verbose mode (-v) would print
+  # the decrypted SIP passwords to your screen and into any
+  # Ansible log files.
+
+# ── Render config templates ───────────────────────────────────────
+
+- name: Deploy pjsip.conf
+  ansible.builtin.template:
+    src: pjsip.conf.j2
+    dest: "{{ asterisk_config_dir }}/pjsip.conf"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+    # 0640 = owner rw, group r, others ---
+    # pjsip.conf contains SIP passwords — restrict read access
+    # to the asterisk user and group only. Other system accounts
+    # cannot read the passwords even if they have shell access.
+    validate: /usr/sbin/asterisk -C %s
+    # validate runs this command against the rendered file before
+    # writing it to dest. %s is replaced with a temp file path.
+    # asterisk -C checks config file syntax without starting the
+    # daemon — if syntax is wrong, Ansible refuses to deploy and
+    # the existing working config stays in place.
+  notify: Reload Asterisk
+
+- name: Deploy extensions.conf
+  ansible.builtin.template:
+    src: extensions.conf.j2
+    dest: "{{ asterisk_config_dir }}/extensions.conf"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+  notify: Reload Asterisk
+
+- name: Deploy musiconhold.conf
+  ansible.builtin.template:
+    src: musiconhold.conf.j2
+    dest: "{{ asterisk_config_dir }}/musiconhold.conf"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+  notify: Reload Asterisk
