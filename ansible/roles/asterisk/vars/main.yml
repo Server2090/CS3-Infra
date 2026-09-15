@@ -1,0 +1,183 @@
+---
+# ansible/roles/asterisk/vars/main.yml
+# All configurable values for the Asterisk role.
+# Tasks and templates reference these variables — nothing is
+# hardcoded in task files or templates.
+# To change any aspect of the Asterisk setup, edit this file only.
+
+# ── Asterisk build ────────────────────────────────────────────────
+asterisk_version: "22-current"
+# "22-current" always resolves to the latest Asterisk 22 LTS release.
+# The download URL becomes:
+#   https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-22-current.tar.gz
+# Asterisk 22 LTS is supported until October 2028 with security
+# fixes until 2029. Do not use 20 or 18 — those are older LTS branches.
+
+asterisk_source_dir: "/usr/src/asterisk"
+# Where the source tarball is extracted on the VM.
+# /usr/src is the conventional location for compiled software source.
+# This directory is created by the install task and can be deleted
+# after compilation to reclaim disk space — we leave it in place
+# so re-running the playbook detects the source is already present
+# and skips the download.
+
+asterisk_user: "asterisk"
+asterisk_group: "asterisk"
+# Asterisk runs as a dedicated non-root user for security.
+# Running as root would mean a compromised Asterisk process has
+# full system access. The install task creates this user with:
+#   - no login shell (/usr/sbin/nologin)
+#   - no home directory
+#   - membership in the audio group for sound device access
+
+asterisk_config_dir: "/etc/asterisk"
+# Standard location for all Asterisk configuration files.
+# Templates are rendered here by the configure task.
+
+asterisk_log_dir: "/var/log/asterisk"
+asterisk_run_dir: "/var/run/asterisk"
+asterisk_spool_dir: "/var/spool/asterisk"
+# Standard Asterisk runtime directories.
+# Created by the install task with correct ownership (asterisk:asterisk)
+# so the service can write logs and spool files without root.
+
+# ── Asterisk build dependencies ───────────────────────────────────
+# All packages needed to compile Asterisk 22 from source on Debian 13.
+# install_prereq (Asterisk's own script) handles most dependencies
+# but these must be present before running it.
+asterisk_build_deps:
+  - build-essential
+  # gcc, g++, make — the core C compiler toolchain
+  - git
+  # Required by some Asterisk contrib scripts
+  - curl
+  - wget
+  # For downloading the source tarball
+  - libssl-dev
+  # OpenSSL headers — required for SIP TLS and SRTP support
+  - libncurses5-dev
+  # Terminal UI library — required for the Asterisk CLI
+  - libnewt-dev
+  # Used by the Asterisk menuselect build configuration tool
+  - libxml2-dev
+  # XML parsing — used by Asterisk's configuration parser
+  - libsqlite3-dev
+  # SQLite — used by Asterisk's internal database (AstDB)
+  - uuid-dev
+  # UUID generation — used for call IDs
+  - libjansson-dev
+  # JSON library — required for ARI (Asterisk REST Interface)
+  - libedit-dev
+  # Command line editing — used by the Asterisk CLI
+  - libsrtp2-dev
+  # SRTP (encrypted media) — required for secure calls
+  - libopus-dev
+  # Opus audio codec — modern, high quality, low bandwidth
+  - libspeexdsp-dev
+  # Speex DSP — echo cancellation and noise reduction
+  - pkg-config
+  # Helper for finding library paths during compilation
+  - autoconf
+  - automake
+  - libtool-bin
+  # Autotools — used by Asterisk's ./configure script
+  - subversion
+  # SVN client — used by Asterisk's get_mp3_source.sh script
+  - unixodbc-dev
+  # ODBC database connectivity — needed for some Asterisk modules
+
+# ── Runtime packages ──────────────────────────────────────────────
+# Packages needed at runtime (after compilation) that are not
+# pulled in automatically by the compiled binary.
+asterisk_runtime_deps:
+  - qemu-guest-agent
+  # QEMU guest agent — allows Proxmox to report the VM's IP,
+  # perform graceful shutdowns, and take consistent snapshots.
+  # Must be installed and running for the Proxmox web UI to show
+  # the IP address under the VM's Summary tab.
+  - ufw
+  # Uncomplicated Firewall — used by the firewall task to restrict
+  # SIP and RTP access to known subnets only.
+  - fail2ban
+  # Intrusion prevention — bans IPs that repeatedly fail SIP
+  # authentication. Configured by the fail2ban task.
+
+# ── SIP extensions ────────────────────────────────────────────────
+# One entry per analog phone port across both ATAs.
+# Each HT802 has 2 FXS ports so 2 extensions per device = 4 total.
+# Extension numbers follow a simple scheme:
+#   1xx = HT802 v1 (192.168.71.10)
+#   2xx = HT802 v2 (192.168.10.169)
+# To add more extensions, add entries here — no other file needs changing.
+sip_extensions:
+  - id: "101"
+    # PJSIP endpoint ID and extension number.
+    # The ATA uses this as the SIP username when registering.
+    label: "HT802-v1-port1"
+    # Human readable label — used in comments in pjsip.conf.
+    # Not visible to users — just for your reference.
+    ata_host: "192.168.71.10"
+    # IP address of the ATA this extension registers from.
+    # Used in the PJSIP identify block to match inbound
+    # registrations to the correct endpoint by source IP.
+    secret_var: "sip_secret_101"
+    # Name of the variable in vars/secrets.yml that holds
+    # the SIP password for this extension.
+    # Never put actual passwords in this file — they go in
+    # the SOPS-encrypted secrets file.
+
+  - id: "102"
+    label: "HT802-v1-port2"
+    ata_host: "192.168.71.10"
+    # Both ports on HT802 v1 register from the same IP.
+    # PJSIP distinguishes them by their username (101 vs 102).
+    secret_var: "sip_secret_102"
+
+  - id: "201"
+    label: "HT802-v2-port1"
+    ata_host: "192.168.10.169"
+    secret_var: "sip_secret_201"
+
+  - id: "202"
+    label: "HT802-v2-port2"
+    ata_host: "192.168.10.169"
+    # Both ports on HT802 v2 register from the same IP.
+    secret_var: "sip_secret_202"
+
+# ── PJSIP transport ───────────────────────────────────────────────
+pjsip_transport: "transport-udp"
+# Name of the PJSIP transport definition.
+# UDP is the standard for internal SIP — lower overhead than TCP,
+# works reliably on local networks.
+# Both ATAs default to UDP — no config change needed on the devices.
+
+pjsip_bind_ip: "0.0.0.0"
+# Listen on all interfaces.
+# The VM only has one NIC (vmbr0) so this is equivalent to
+# binding to 192.168.80.10 but is more robust if a second NIC
+# is added later.
+
+# ── Local networks for PJSIP ─────────────────────────────────────
+# PJSIP needs to know which networks are "local" so it does not
+# rewrite SIP Contact headers thinking it is behind NAT.
+# Add all subnets that contain SIP devices here.
+pjsip_local_nets:
+  - "192.168.80.0/24"
+  # Management network — Asterisk server itself
+  - "192.168.71.0/24"
+  # HT802 v1 network
+  - "192.168.10.0/24"
+  # HT802 v2 network
+
+# ── Dialplan context ──────────────────────────────────────────────
+dialplan_context: "internal"
+# The PJSIP endpoint context — all extensions are placed in the
+# "internal" dialplan context. This means extensions can only
+# call other extensions in the same context — they cannot
+# accidentally reach outside lines or special system contexts.
+
+# ── Music on hold ─────────────────────────────────────────────────
+moh_class: "default"
+# Music on hold class name — referenced in extensions.conf.
+# "default" is the built-in Asterisk MOH class.
+# Asterisk ships with sample MOH files in /var/lib/asterisk/moh/.
