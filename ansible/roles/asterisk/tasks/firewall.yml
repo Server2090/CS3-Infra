@@ -1,0 +1,72 @@
+---
+# ansible/roles/asterisk/tasks/firewall.yml
+# Adds Asterisk-specific UFW rules on top of the base firewall
+# that the common role already configured.
+#
+# What common already did (do NOT repeat here):
+#   - ufw default deny incoming
+#   - ufw default allow outgoing
+#   - SSH port 22 allowed from mgt_subnets
+#
+# What this file adds:
+#   - SIP port 5060 UDP+TCP from all ATA subnets
+#   - RTP ports 10000-20000 UDP from all ATA subnets
+#
+# Source of truth for subnets: group_vars/voip.yml (ata_subnets)
+# Source of truth for ports:   vars/main.yml (sip_port, rtp_port_*)
+# To allow a new ATA on a new subnet — add it to ata_subnets in
+# group_vars/voip.yml and re-run with --tags asterisk_firewall.
+# No other file needs changing.
+
+- name: Allow SIP UDP from ATA subnets
+  community.general.ufw:
+    rule: allow
+    port: "{{ sip_port }}"
+    proto: udp
+    src: "{{ item.subnet }}"
+    comment: "SIP UDP — {{ item.comment }}"
+    # SIP signalling over UDP — the default and most common transport.
+    # Both HT802 ATAs use UDP SIP by default.
+    # "{{ item.subnet }}" and "{{ item.comment }}" are substituted
+    # from each entry in ata_subnets as the loop iterates.
+  loop: "{{ ata_subnets }}"
+  # loop iterates over the ata_subnets list in group_vars/voip.yml.
+  # One UFW rule is created per subnet per protocol.
+  # Currently 3 subnets = 3 rules for SIP UDP.
+
+- name: Allow SIP TCP from ATA subnets
+  community.general.ufw:
+    rule: allow
+    port: "{{ sip_port }}"
+    proto: tcp
+    src: "{{ item.subnet }}"
+    comment: "SIP TCP — {{ item.comment }}"
+    # SIP signalling over TCP — used as fallback when UDP packets
+    # are fragmented or lost. Some ATAs switch to TCP automatically.
+    # Opening both UDP and TCP ensures compatibility with all ATA
+    # configurations without manual device-by-device checking.
+  loop: "{{ ata_subnets }}"
+
+- name: Allow RTP media from ATA subnets
+  community.general.ufw:
+    rule: allow
+    port: "{{ rtp_port_start }}:{{ rtp_port_end }}"
+    proto: udp
+    src: "{{ item.subnet }}"
+    comment: "RTP audio — {{ item.comment }}"
+    # RTP is the actual audio stream — separate from SIP signalling.
+    # SIP sets up the call, RTP carries the voice.
+    # Port range 10000:20000 — each active call uses 2 ports from
+    # this range (one for each direction of audio).
+    # RTP is always UDP — it is a real-time stream where a dropped
+    # packet is better than a delayed retransmit (unlike TCP).
+    # "{{ rtp_port_start }}:{{ rtp_port_end }}" expands to
+    # "10000:20000" from vars/main.yml.
+  loop: "{{ ata_subnets }}"
+
+- name: Reload UFW to apply new rules
+  community.general.ufw:
+    state: reloaded
+    # Reloaded applies all pending rule changes.
+    # Without this the rules are written to disk but not yet active
+    # in the kernel's netfilter tables — calls would still be blocked.
