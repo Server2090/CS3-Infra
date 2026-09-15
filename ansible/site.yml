@@ -5,21 +5,25 @@
 # Run the full playbook:
 #   ansible-playbook site.yml
 #
+# Run against a specific host or group only:
+#   ansible-playbook site.yml --limit voip
+#   ansible-playbook site.yml --limit asterisk
+#
 # Run against a specific tag only:
 #   ansible-playbook site.yml -t common_ssh
-#   ansible-playbook site.yml -t proxmox_network
+#   ansible-playbook site.yml -t asterisk_pjsip
 #
 # Preview changes without applying them:
-#   ansible-playbook site.yml --check --diff
+#   ansible-playbook site.yml --check --diff --limit voip
 #
 # Run with verbose output for debugging:
-#   ansible-playbook site.yml -v
+#   ansible-playbook site.yml -v --limit voip
 
 # ── Step 1: Common baseline ────────────────────────────────────────
 # Applies to every host — SSH hardening, firewall, NTP, packages.
-# Must run before the proxmox role because it installs dependencies
-# and creates the operator accounts proxmox tasks rely on.
-- name: Apply common configuration
+# Must run before any service role because it installs dependencies
+# and creates the operator accounts other tasks rely on.
+- name: Apply common configuration to Proxmox nodes
   hosts: proxmox
   gather_facts: true
   roles:
@@ -42,3 +46,25 @@
   gather_facts: true
   roles:
     - role: proxmox_cs3pve
+
+# ── Step 4: VoIP server ───────────────────────────────────────────
+# Applies common baseline then Asterisk to the voip group.
+# Common runs first to set up SSH hardening, UFW, NTP, and
+# the cs3admin user before Asterisk is installed on top.
+# To run only the VoIP steps without touching Proxmox:
+#   ansible-playbook site.yml --limit voip
+- name: Apply common configuration to VoIP server
+  hosts: voip
+  gather_facts: true
+  roles:
+    - role: common
+
+- name: Apply Asterisk VoIP configuration
+  hosts: voip
+  gather_facts: true
+  roles:
+    - role: asterisk
+    # Role does not exist yet — created in Phase 3.
+    # Running site.yml before Phase 3 is complete will error here.
+    # To safely run only Proxmox steps in the meantime:
+    #   ansible-playbook site.yml --limit proxmox
