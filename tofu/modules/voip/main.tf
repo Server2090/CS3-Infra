@@ -165,14 +165,16 @@ resource "proxmox_virtual_environment_vm" "voip" {
 
   # ── Cloud-init ─────────────────────────────────────────────────
   initialization {
-    datastore_id = var.iso_storage
-    # Must be "local" — cloud-init seed files (user-data, meta-data,
-    # network-config) are stored as ISO images in local storage.
-    # Proxmox mounts this as a virtual CD-ROM on first boot.
-    # Using var.iso_storage ("local") not var.vm_storage ("vmdata")
-    # because vmdata does not support ISO content type.
-    # Without this explicit value the provider guesses "local-lvm"
-    # which does not exist on this node — VM creation would fail.
+    datastore_id = var.vm_storage
+    # Must be "vmdata" (ZFS pool) — the bpg/proxmox provider stores
+    # cloud-init data as small disk image files, which require a
+    # storage that supports content-type "images".
+    # "local" storage only supports "iso" and "vztmpl" content types
+    # and will error with "does not support content-type images".
+    # vmdata (ZFS) supports images — correct choice here.
+    # Note: the proxmox_download_file resource above still uses
+    # var.iso_storage ("local") which is correct for that resource —
+    # cloud image downloads are stored as ISOs, not disk images.
 
     ip_config {
       ipv4 {
