@@ -38,11 +38,11 @@ exten = {{ ext.id }},1,NoOp(Call to {{ ext.label }})
 ; Useful for seeing call flow in the Asterisk log:
 ;   asterisk -rx "core show channels"
 
-exten = {{ ext.id }},2,Dial(PJSIP/{{ ext.id }},30)
-; Dial(PJSIP/{{ ext.id }},30) — ring extension {{ ext.id }} for 30 seconds.
+exten = {{ ext.id }},2,Dial(PJSIP/{{ ext.id }},{{ dial_timeout }})
+; Dial(PJSIP/{{ ext.id }},{{ dial_timeout }}) — ring extension {{ ext.id }} for 30 seconds.
 ; PJSIP/ = use the PJSIP channel driver (chan_pjsip).
 ; {{ ext.id }} = the endpoint name from pjsip.conf.
-; 30 = ring timeout in seconds. If not answered in 30s, move to next priority.
+; dial_timeout = ring timeout in seconds from vars/main.yml. If not answered, move to next priority.
 
 exten = {{ ext.id }},3,Voicemail({{ ext.id }}@default,u)
 ; If not answered, send to voicemail box {{ ext.id }} in the default context.

@@ -114,3 +114,11 @@ moh_class: "default"
 # Uses Asterisk's built-in sample MOH files.
 # To change: drop .wav/.mp3 files in /var/lib/asterisk/moh/
 # and run: asterisk -rx "moh reload"
+
+# ── Call behaviour ────────────────────────────────────────────────
+dial_timeout: 30
+# How many seconds to ring before giving up and going to voicemail.
+# 30 seconds = roughly 5 ring cycles — enough time to reach the phone
+# without making callers wait too long.
+# Increase to 60 if phones are far from where people sit.
+# Decrease to 15 for a snappier "no answer" experience.
