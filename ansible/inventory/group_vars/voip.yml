@@ -1,0 +1,60 @@
+---
+# ansible/inventory/group_vars/voip.yml
+# Connection and base variables for all hosts in the voip group.
+# This file has higher Ansible variable precedence than
+# group_vars/all.yml, so these values override the global defaults
+# (e.g. ansible_user: root from all.yml becomes debian here).
+
+# ── Connection ────────────────────────────────────────────────────
+ansible_user: debian
+# The Debian 13 cloud image creates a "debian" user via cloud-init.
+# This is the only account that exists before Ansible runs.
+# The common role will create cs3admin with sudo access.
+# After that first run, this can be changed to cs3admin.
+
+ansible_ssh_private_key_file: ~/.ssh/cs3admin@cs3.lab
+# Private key matching the public key injected by OpenTofu
+# via cloud-init. Must exist on the Ansible control machine.
+# The public key lives at ~/.ssh/cs3admin@cs3.lab.pub.
+
+ansible_become: true
+# Enables privilege escalation (sudo) for all tasks in this group.
+# Required because most system tasks (apt, systemctl, ufw) need root.
+# The debian cloud-init user has passwordless sudo by default.
+
+ansible_become_method: sudo
+# Use sudo for escalation. The debian user's sudoers entry
+# (from the Debian cloud image) allows this without a password.
+
+# ── Lab identity ──────────────────────────────────────────────────
+
+voip_server_fqdn: "voip.cs3.lab"
+# Fully qualified domain name — used as the Asterisk hostname
+# and in SIP configuration as the server's identity.
+
+# ── ATA devices ───────────────────────────────────────────────────
+# Grandstream HT802 ATA locations — used for UFW firewall rules
+# to allow SIP and RTP traffic from these specific subnets.
+# Each ATA is on a different network from the Asterisk server,
+# so all three subnets need explicit firewall rules.
+ata_subnets:
+  - subnet: "192.168.80.0/24"
+    comment: "Management network — Asterisk server itself"
+  - subnet: "192.168.71.0/24"
+    comment: "HT802 v1 network (192.168.71.10)"
+  - subnet: "192.168.10.0/24"
+    comment: "HT802 v2 network (192.168.10.169)"
+
+# ── SIP ports ─────────────────────────────────────────────────────
+sip_port: 5060
+# Standard SIP signalling port — UDP and TCP.
+# Both ATAs register to Asterisk on this port.
+
+# ── RTP media ports ───────────────────────────────────────────────
+rtp_port_start: 10000
+rtp_port_end: 20000
+# RTP is the audio stream — separate from SIP signalling.
+# Each active call uses two UDP ports from this range (one per
+# direction). 10000 ports handles 5000 simultaneous calls —
+# far more than two ATAs will ever generate.
+# Both the Asterisk config and UFW rules use these values.
