@@ -44,7 +44,7 @@ locals {
   # Always paired with q35 machine type.
   # Requires a small EFI disk per VM — defined in each module.
 
-  default_scsihw = "virtio-scsi-pci"
+  default_scsihw = "virtio-scsi-single"
   # Paravirtualised SCSI controller.
   # Fastest option, scales to multiple disks, supports TRIM to ZFS.
 
