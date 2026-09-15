@@ -34,3 +34,13 @@
     # Used for config-only changes (dialplan, PJSIP endpoints)
     # where a full restart is not needed.
   listen: "Reload Asterisk"
+
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+  listen: "Restart fail2ban"
+  # Restarts fail2ban to load the new Asterisk jail definition.
+  # Triggered by the fail2ban.yml task when the jail config changes.
+  # fail2ban is already installed and running from the common role —
+  # we are just restarting it to pick up the new jail file.

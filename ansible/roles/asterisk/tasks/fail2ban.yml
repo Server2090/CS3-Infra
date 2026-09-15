@@ -1,0 +1,50 @@
+---
+# ansible/roles/asterisk/tasks/fail2ban.yml
+# Adds an Asterisk SIP jail to fail2ban.
+# Does NOT install or configure fail2ban from scratch —
+# the common role already did that for SSH.
+# This file only adds the Asterisk-specific jail on top.
+
+- name: Deploy Asterisk fail2ban jail config
+  ansible.builtin.template:
+    src: fail2ban_asterisk.conf.j2
+    dest: /etc/fail2ban/jail.d/asterisk.conf
+    owner: root
+    group: root
+    mode: "0644"
+    # template renders the .j2 file with variable substitution
+    # and writes the result to dest on the VM.
+    # Variables like {{ asterisk_log_dir }} and {{ ata_subnets }}
+    # are replaced with their actual values at render time.
+    # owner/group root = only root can modify the jail config.
+  notify: Restart fail2ban
+  # Notify triggers the handler at the end of the play.
+  # fail2ban must restart to load the new jail definition.
+
+- name: Ensure Asterisk security log directory exists
+  ansible.builtin.file:
+    path: "{{ asterisk_log_dir }}"
+    state: directory
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0750"
+  # fail2ban watches asterisk_log_dir/security.
+  # If that directory does not exist when fail2ban starts,
+  # it silently skips the jail. Ensure it exists first.
+
+- name: Ensure Asterisk security log file exists
+  ansible.builtin.file:
+    path: "{{ asterisk_log_dir }}/security"
+    state: touch
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+    # state: touch creates the file if absent.
+    # modification_time: preserve and access_time: preserve mean
+    # if the file already exists, its timestamps are not updated —
+    # making this task idempotent. Without preserve, every playbook
+    # run would touch the file and change its timestamp needlessly.
+    # 0640 = owner rw, group r, others --- 
+    # fail2ban runs as root so it can read the group-readable file.

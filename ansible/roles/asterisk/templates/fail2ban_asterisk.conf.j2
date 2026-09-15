@@ -1,0 +1,87 @@
+# {{ ansible_managed }}
+# ansible/roles/asterisk/templates/fail2ban_asterisk.conf.j2
+# Defines the fail2ban filter and jail for Asterisk SIP.
+# Deployed to /etc/fail2ban/jail.d/asterisk.conf on the VM.
+#
+# {{ ansible_managed }} expands to a comment saying this file is
+# managed by Ansible — do not edit it manually because the next
+# playbook run will overwrite your changes.
+#
+# Two sections in one file:
+#   [Definition] — teaches fail2ban what a failed SIP auth looks like
+#   [asterisk]   — the jail: how many failures before a ban, how long
+
+[Definition]
+# The filter tells fail2ban what log lines indicate a failed
+# SIP authentication attempt. These regex patterns match lines
+# that Asterisk writes to /var/log/asterisk/security when a
+# device tries to register with a wrong password.
+#
+# Asterisk security log format examples:
+#   SECURITY: SecurityEvent="FailedACL",EventTV="...",Severity="Error",
+#   SECURITY: SecurityEvent="InvalidAccountID",...
+#   SECURITY: SecurityEvent="ChallengeResponseFailed",...
+#   SECURITY: SecurityEvent="InvalidPassword",...
+
+failregex = SECURITY: SecurityEvent="FailedACL",.*RemoteAddress="IPV4/UDP/<HOST>/\d+"
+            SECURITY: SecurityEvent="InvalidAccountID",.*RemoteAddress="IPV4/UDP/<HOST>/\d+"
+            SECURITY: SecurityEvent="ChallengeResponseFailed",.*RemoteAddress="IPV4/UDP/<HOST>/\d+"
+            SECURITY: SecurityEvent="InvalidPassword",.*RemoteAddress="IPV4/UDP/<HOST>/\d+"
+# failregex — one pattern per line, all are checked against each log line.
+# <HOST> is a fail2ban placeholder that matches and captures the IP address.
+# fail2ban counts how many times an IP matches any of these patterns
+# within the findtime window. Exceeding maxretry triggers a ban.
+
+ignoreregex =
+# ignoreregex — log lines matching this are never counted as failures.
+# Empty here — we do not want to ignore any failure patterns.
+# If your ATAs cause false positives during setup, add their IPs
+# to ignoreip in the [asterisk] jail section below instead.
+
+[asterisk]
+enabled  = true
+# true = this jail is active. Set to false to disable without deleting.
+
+filter   = asterisk
+# Tells fail2ban to use the [Definition] filter above.
+# The filter name matches the filename (asterisk.conf).
+
+logpath  = {{ asterisk_log_dir }}/security
+# The Asterisk security log — only security events are written here,
+# not general call traffic. This keeps fail2ban efficient — it only
+# reads the relevant log file rather than the full messages log.
+
+maxretry = {{ common_fail2ban.maxretry }}
+# Reuse the same threshold from common role vars.
+# Consistent policy: same number of failures before ban for both
+# SSH and SIP. Currently 5 from common/vars/main.yml.
+
+findtime = {{ common_fail2ban.findtime }}
+# Count failures within this many seconds. Currently 600 (10 min).
+
+bantime  = {{ common_fail2ban.bantime }}
+# Ban duration in seconds. Currently 3600 (1 hour).
+# Using the same values as SSH keeps the security policy consistent
+# and means you only change thresholds in one place (common vars).
+
+action   = %(action_)s
+# action_ = ban only (no email notification).
+# Change to %(action_mw)s if you want email on each ban.
+# Change to %(action_mwl)s if you want email with log lines included.
+
+ignoreip = 127.0.0.1/8 {{ ata_subnets | map(attribute='subnet') | join(' ') }}
+# ignoreip — IPs and subnets that are NEVER banned regardless of failures.
+# 127.0.0.1/8 = loopback — always ignored (fail2ban default).
+# The Jinja2 filter extracts just the subnet strings from ata_subnets
+# and joins them with spaces into a single line. Result:
+#   ignoreip = 127.0.0.1/8 192.168.80.0/24 192.168.71.0/24 192.168.10.0/24
+#
+# Why whitelist ATA subnets?
+# During initial setup an ATA may send many registration attempts
+# with the wrong password before you get the credentials right.
+# Without whitelisting, fail2ban would ban your ATA's subnet and
+# you would lose access to the device — requiring a manual network
+# change to unblock it. Whitelisting prevents that.
+# Once everything is working correctly, misconfigured ATAs cannot
+# register anyway (wrong password = no call) — so whitelisting
+# them in fail2ban costs nothing security-wise on a private network.
