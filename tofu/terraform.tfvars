@@ -19,3 +19,10 @@ proxmox_iso_storage = "local"
 # These match the defaults in variables.tf but are explicit here
 # so the values are visible without having to open variables.tf.
 # Explicit is always easier to debug than implicit defaults.
+
+# ── VoIP VM ───────────────────────────────────────────────────────
+# These are the only values you ever need to change to move
+# the VoIP server — everything else is derived from them.
+voip_vm_id      = 100
+voip_vm_ip      = "192.168.80.10/24"
+voip_vm_gateway = "192.168.80.1"

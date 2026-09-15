@@ -39,3 +39,34 @@ variable "proxmox_iso_storage" {
   # local = Proxmox built-in storage at /var/lib/vz/
   # ISOs live at /var/lib/vz/template/iso/
 }
+
+# ── VoIP VM ───────────────────────────────────────────────────────
+# One variable per configurable value for the VoIP server.
+# Values are set in terraform.tfvars and passed to the voip module.
+# To change the IP or VM ID later, edit terraform.tfvars only —
+# never edit the module files directly.
+
+variable "voip_vm_id" {
+  description = "Proxmox VM ID for the VoIP server. Must be unique across all VMs on the node. 100 = first lab VM."
+  type        = number
+  default     = 100
+  # Proxmox VM IDs 100–999 are the conventional range for user VMs.
+  # IDs below 100 are reserved for Proxmox internal use.
+}
+
+variable "voip_vm_ip" {
+  description = "Static IPv4 address for the VoIP VM in CIDR notation. The /24 tells cloud-init the subnet mask."
+  type        = string
+  default     = "192.168.80.10/24"
+  # CIDR notation bundles the IP and subnet mask into one value.
+  # 192.168.80.10/24 means IP=192.168.80.10, mask=255.255.255.0.
+  # Cloud-init expects this format — do not separate them.
+}
+
+variable "voip_vm_gateway" {
+  description = "Default IPv4 gateway for the VoIP VM. Must be reachable on the management bridge."
+  type        = string
+  default     = "192.168.80.1"
+  # Matches default_gateway in ansible/inventory/group_vars/all.yml.
+  # All traffic not destined for 192.168.80.0/24 goes here.
+}
