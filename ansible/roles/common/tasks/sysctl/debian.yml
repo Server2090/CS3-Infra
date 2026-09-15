@@ -1,0 +1,14 @@
+---
+# roles/common/tasks/sysctl/debian.yml
+# Applies kernel hardening parameters on Debian hosts.
+# Parameters come from common_sysctl_settings in vars/main.yml.
+# ip_forward is intentionally absent — set by the proxmox role.
+
+- name: Apply sysctl hardening parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value | string }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-cs3-hardening.conf
+    reload: true
+  loop: "{{ common_sysctl_settings | dict2items }}"

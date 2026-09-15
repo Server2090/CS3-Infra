@@ -1,0 +1,21 @@
+---
+# roles/common/tasks/repos/main.yml
+# Dispatches APT/YUM repo configuration to the correct OS-specific file.
+# NOTE: Proxmox-specific repo tasks (enterprise removal, no-subscription)
+# live in the proxmox role — not here. Common only handles standard OS repos.
+
+- name: Configure APT repositories (Debian family)
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Configure YUM repositories (RedHat family)
+  ansible.builtin.include_tasks: redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Warn if OS family is not supported
+  ansible.builtin.debug:
+    msg: >
+      WARNING: {{ inventory_hostname }} runs
+      {{ ansible_facts['distribution'] }} which is not a supported
+      OS family for repo configuration. Skipping.
+  when: ansible_facts['os_family'] not in ['Debian', 'RedHat']

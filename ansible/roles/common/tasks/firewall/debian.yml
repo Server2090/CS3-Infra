@@ -1,0 +1,35 @@
+---
+# roles/common/tasks/firewall/debian.yml
+# UFW baseline for Debian-family hosts.
+# Sets default policies and SSH access from management subnets.
+# All source IPs come from group_vars — never hardcoded here.
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Set default incoming policy to deny
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+    state: enabled
+
+- name: Set default outgoing policy to allow
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow SSH from management subnets
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port }}"
+    proto: tcp
+    src: "{{ item.subnet }}"
+    comment: "SSH — {{ item.comment }}"
+  loop: "{{ mgt_subnets }}"
+  # mgt_subnets comes from group_vars/all.yml.
+  # One UFW rule per subnet — loop generates all of them.
+  notify: Reload UFW

@@ -1,0 +1,30 @@
+---
+# roles/common/tasks/firewall/main.yml
+# Dispatches firewall baseline to the correct OS-specific file.
+# Debian  → UFW
+# RedHat  → firewalld
+#
+# Common role sets baseline only:
+#   - Default deny all incoming
+#   - Default allow all outgoing
+#   - SSH from all mgt_subnets
+#
+# Proxmox-specific rules (Corosync, SPICE, live migration) are
+# added by the proxmox role on top of this baseline.
+# Service-specific rules (SIP, RTP) are added by service roles.
+
+- name: Configure firewall baseline (Debian family)
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Configure firewall baseline (RedHat family)
+  ansible.builtin.include_tasks: redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Warn if OS family is not supported
+  ansible.builtin.debug:
+    msg: >
+      WARNING: {{ inventory_hostname }} runs
+      {{ ansible_facts['distribution'] }} which is not a supported
+      OS family for firewall configuration. Skipping.
+  when: ansible_facts['os_family'] not in ['Debian', 'RedHat']

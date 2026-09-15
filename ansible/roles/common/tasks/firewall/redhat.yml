@@ -1,0 +1,9 @@
+---
+# roles/common/tasks/firewall/redhat.yml
+# Placeholder — add firewalld tasks here when needed.
+
+- name: RedHat firewall configuration not yet implemented
+  ansible.builtin.debug:
+    msg: >
+      INFO: RedHat firewall (firewalld) configuration not yet implemented.
+      Add tasks here when a RedHat-family host is added.

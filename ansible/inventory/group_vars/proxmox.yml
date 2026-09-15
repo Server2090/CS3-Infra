@@ -127,3 +127,13 @@ proxmox_users:
     # OpenTofu uses this user's API token to provision VMs
     role: "Administrator"
     comment: "OpenTofu provisioning user — managed by Ansible"
+
+# ── Host classification ───────────────────────────────────────────
+proxmox_type: proxmox
+# proxmox = bare metal Proxmox VE hypervisor node.
+# The common role uses this to distinguish the hypervisor from
+# the VMs running on top of it.
+# Tasks guarded by proxmox_type == 'proxmox':
+#   - Proxmox apt repo management
+#   - ip_forward sysctl (required for VM routing, not for VMs themselves)
+#   - UFW rules for Proxmox cluster traffic (Corosync, SPICE, migration)

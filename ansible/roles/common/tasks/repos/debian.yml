@@ -1,0 +1,13 @@
+---
+# roles/common/tasks/repos/debian.yml
+# Ensures standard Debian apt repos are healthy and cache is fresh.
+# Does NOT touch Proxmox repos — those are handled by the proxmox role.
+# Debian 13 cloud images ship with correct sources already configured
+# in /etc/apt/sources.list.d/debian.sources (deb822 format).
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    # Skip update if cache is under 1 hour old.
+    # Prevents redundant network calls on repeated playbook runs.

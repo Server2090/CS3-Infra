@@ -1,0 +1,21 @@
+---
+# roles/common/tasks/sysctl/main.yml
+# Dispatches kernel hardening to the correct OS-specific file.
+# ip_forward is NOT set here — it is set by the proxmox role
+# on Proxmox nodes (=1) and explicitly disabled on VMs (=0).
+
+- name: Apply sysctl hardening (Debian family)
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Apply sysctl hardening (RedHat family)
+  ansible.builtin.include_tasks: redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Warn if OS family is not supported
+  ansible.builtin.debug:
+    msg: >
+      WARNING: {{ inventory_hostname }} runs
+      {{ ansible_facts['distribution'] }} which is not a supported
+      OS family for sysctl hardening. Skipping.
+  when: ansible_facts['os_family'] not in ['Debian', 'RedHat']

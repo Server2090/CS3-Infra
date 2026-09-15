@@ -1,0 +1,9 @@
+---
+# roles/common/tasks/fail2ban/redhat.yml
+# Placeholder — add RedHat fail2ban tasks here when needed.
+
+- name: RedHat fail2ban configuration not yet implemented
+  ansible.builtin.debug:
+    msg: >
+      INFO: RedHat fail2ban configuration not yet implemented.
+      Add tasks here when a RedHat-family host is added.

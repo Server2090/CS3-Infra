@@ -1,0 +1,25 @@
+---
+# roles/common/tasks/packages/debian.yml
+# Installs and removes packages on Debian-family hosts using apt.
+# Package lists come from common/vars/main.yml — never hardcoded here.
+
+- name: Ensure python3-apt is present for Ansible apt module
+  ansible.builtin.apt:
+    name: "{{ common_python_apt }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  # python3-apt must exist before any other apt task runs.
+  # Ansible's apt module requires it to parse package metadata.
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages_install }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Remove unwanted packages
+  ansible.builtin.apt:
+    name: "{{ common_packages_remove }}"
+    state: absent

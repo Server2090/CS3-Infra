@@ -1,0 +1,9 @@
+---
+# roles/common/tasks/packages/redhat.yml
+# Placeholder — add RedHat/Rocky/Alma package tasks here when needed.
+
+- name: RedHat package management not yet implemented
+  ansible.builtin.debug:
+    msg: >
+      INFO: RedHat package management tasks not yet implemented.
+      Add dnf tasks here when a RedHat-family host is added to the lab.

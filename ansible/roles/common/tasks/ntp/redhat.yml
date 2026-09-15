@@ -1,0 +1,12 @@
+---
+# roles/common/tasks/ntp/redhat.yml
+# Placeholder — add RedHat chrony tasks here when needed.
+# Note: on RedHat the service name is "chronyd" and config
+# lives at /etc/chrony.conf (not /etc/chrony/chrony.conf).
+
+- name: RedHat NTP configuration not yet implemented
+  ansible.builtin.debug:
+    msg: >
+      INFO: RedHat NTP (chronyd) configuration not yet implemented.
+      Add tasks here when a RedHat-family host is added.
+      Note: service is chronyd, config is /etc/chrony.conf on RedHat.

@@ -1,0 +1,35 @@
+---
+# roles/common/tasks/ntp/main.yml
+# Dispatches NTP configuration to the correct OS-specific file.
+# NTP is skipped on LXC containers — they inherit time from the
+# Proxmox host kernel and chrony cannot run in an unprivileged LXC.
+
+- name: Configure NTP with chrony (Debian family)
+  ansible.builtin.include_tasks: debian.yml
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - proxmox_type != 'lxc'
+
+- name: Configure NTP with chrony (RedHat family)
+  ansible.builtin.include_tasks: redhat.yml
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - proxmox_type != 'lxc'
+
+- name: Skip NTP on LXC containers
+  ansible.builtin.debug:
+    msg: >
+      INFO: {{ inventory_hostname }} is an LXC container.
+      NTP is skipped — LXC containers inherit time from the Proxmox
+      host kernel. chrony cannot run in an unprivileged LXC container.
+  when: proxmox_type == 'lxc'
+
+- name: Warn if OS family is not supported
+  ansible.builtin.debug:
+    msg: >
+      WARNING: {{ inventory_hostname }} runs
+      {{ ansible_facts['distribution'] }} which is not a supported
+      OS family for NTP configuration. Skipping.
+  when:
+    - ansible_facts['os_family'] not in ['Debian', 'RedHat']
+    - proxmox_type != 'lxc'

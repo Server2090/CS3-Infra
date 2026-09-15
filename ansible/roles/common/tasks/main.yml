@@ -1,31 +1,40 @@
 ---
 # roles/common/tasks/main.yml
-# Table of contents for the common role.
-# Each line includes a separate task file for that concern.
-# Order matters — each step depends on the previous one:
-#   1. repos     — fix apt sources first so packages can install
-#   2. packages  — install tools before anything tries to use them
-#   3. unattended_upgrades — configure auto security updates
-#   4. ipv6      — disable IPv6 before SSH hardens
-#   4. users     — create accounts before SSH locks down allowed_users
-#   5. ssh       — harden SSH only after accounts exist
-#   6. fail2ban  — brute force protection after SSH is configured
-#   7. ufw       — firewall last, after all services are configured
-#   8. sysctl    — kernel hardening parameters
-#   9. time      — NTP after network is stable
-#  10. motd      — cosmetic, always last
+# Entry point for the common role.
+# Includes task files in order — each step depends on the previous.
+#
+# Order:
+#   1. repos         — fresh apt cache before anything installs
+#   2. packages      — tools installed before they are configured
+#   3. updates       — auto security patches configured early
+#   4. ipv6          — disable IPv6 before SSH hardens
+#   5. users         — accounts exist before SSH locks AllowUsers
+#   6. ssh           — harden SSH after accounts are created
+#   7. fail2ban      — brute force protection after SSH is configured
+#   8. firewall      — firewall last, after all services are configured
+#   9. sysctl        — kernel hardening
+#  10. time          — NTP after network is stable
+#  11. motd          — cosmetic, always last
+#
+# Each task file dispatches to OS-specific subfiles:
+#   tasks/<category>/main.yml      → dispatcher
+#   tasks/<category>/debian.yml    → Debian/Ubuntu tasks
+#   tasks/<category>/redhat.yml    → RedHat/Rocky/Alma tasks (stubs)
+#
+# Flat files (same on all OS):
+#   ipv6.yml, ssh.yml, users.yml, motd.yml
 
-- name: Configure APT repositories
-  ansible.builtin.include_tasks: repos.yml
+- name: Configure repositories
+  ansible.builtin.include_tasks: repos/main.yml
   tags: [common, common_repos]
 
 - name: Install and remove packages
-  ansible.builtin.include_tasks: packages.yml
+  ansible.builtin.include_tasks: packages/main.yml
   tags: [common, common_packages]
 
-- name: Configure unattended upgrades
-  ansible.builtin.include_tasks: unattended_upgrades.yml
-  tags: [common, common_unattended_upgrades]
+- name: Configure automatic updates
+  ansible.builtin.include_tasks: updates/main.yml
+  tags: [common, common_updates]
 
 - name: Disable IPv6
   ansible.builtin.include_tasks: ipv6.yml
@@ -40,20 +49,20 @@
   tags: [common, common_ssh]
 
 - name: Configure fail2ban
-  ansible.builtin.include_tasks: fail2ban.yml
+  ansible.builtin.include_tasks: fail2ban/main.yml
   tags: [common, common_fail2ban]
 
-- name: Configure UFW firewall
-  ansible.builtin.include_tasks: ufw.yml
-  tags: [common, common_ufw]
+- name: Configure firewall baseline
+  ansible.builtin.include_tasks: firewall/main.yml
+  tags: [common, common_firewall]
 
 - name: Apply sysctl hardening
-  ansible.builtin.include_tasks: sysctl.yml
+  ansible.builtin.include_tasks: sysctl/main.yml
   tags: [common, common_sysctl]
 
 - name: Configure NTP
-  ansible.builtin.include_tasks: time.yml
-  tags: [common, common_time]
+  ansible.builtin.include_tasks: ntp/main.yml
+  tags: [common, common_ntp]
 
 - name: Configure login banner
   ansible.builtin.include_tasks: motd.yml

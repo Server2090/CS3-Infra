@@ -58,3 +58,10 @@ rtp_port_end: 20000
 # direction). 10000 ports handles 5000 simultaneous calls —
 # far more than two ATAs will ever generate.
 # Both the Asterisk config and UFW rules use these values.
+
+# ── Host classification ───────────────────────────────────────────
+proxmox_type: qemu
+# This VM is provisioned as a QEMU VM inside Proxmox.
+# Matches the debian group_vars default — duplicated here explicitly
+# so the voip group is self-documenting without needing to trace
+# through the debian group_vars inheritance chain.

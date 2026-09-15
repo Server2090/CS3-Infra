@@ -6,12 +6,9 @@
 # no need to touch any task files for routine changes.
 
 # ── APT repositories ──────────────────────────────────────────────
-# Enterprise repo files that ship with Proxmox but require a paid
-# subscription. Without a valid key, apt update throws an auth error
-# that blocks all package installs. Remove them immediately.
-common_repos_remove:
-  - path: "/etc/apt/sources.list.d/pve-enterprise.sources"
-  - path: "/etc/apt/sources.list.d/ceph.sources"
+# Proxmox-specific repo management (removing enterprise repos,
+# adding no-subscription repo) is handled by the proxmox role.
+# Common only ensures the standard OS repo cache is fresh.
 
 # ── Packages ──────────────────────────────────────────────────────
 common_packages_install:
@@ -114,43 +111,24 @@ common_ufw:
   default_outgoing: allow
   # allow = permit all outbound traffic — needed for apt, NTP, etc.
 
-  # Static rules — fixed source, always the primary management subnet
-  # Used for Proxmox cluster traffic that only ever comes from mgt_subnet
-  rules:
-    - description: "Corosync cluster communication"
-      port: "5405"
-      proto: udp
-      src: "{{ mgt_subnet }}"
-
-    - description: "Proxmox SPICE proxy"
-      port: "3128"
-      proto: tcp
-      src: "{{ mgt_subnet }}"
-
-    - description: "VM live migration"
-      port: "60000:60050"
-      proto: tcp
-      src: "{{ mgt_subnet }}"
-
-  # Per-subnet rules — looped over every subnet in mgt_subnets (all.yml)
-  # SSH and Proxmox web UI access is granted to every listed subnet.
-  # To grant access from a new location add its subnet to mgt_subnets.
+  # Static rules (Corosync, SPICE, live migration) moved to the
+  # proxmox role — they are Proxmox-specific and must not open on VMs.
+  #
+  # Per-subnet rules — these run on every host via firewall/debian.yml.
+  # SSH access from all management subnets is the universal baseline.
+  # Proxmox web UI (8006) is added by the proxmox role on top of this.
   subnet_rules:
     - description: "SSH"
       port: "{{ ssh_port }}"
-      proto: tcp
-
-    - description: "Proxmox web UI and API"
-      port: "8006"
       proto: tcp
 
 # ── Sysctl hardening ──────────────────────────────────────────────
 common_sysctl_settings:
 
   # ── Routing ──
-  net.ipv4.ip_forward: 1
-  # Must be 1 on Proxmox — required for VM and LXC network traffic
-  # to route between interfaces. Without this VMs cannot reach the network.
+  # net.ipv4.ip_forward is set by the proxmox role, not here.
+  # Proxmox nodes need 1 (VM routing), VMs need 0 (not routers).
+  # Setting it universally here would make every VM a router.
 
   # ── Spoofing protection ──
   net.ipv4.conf.all.rp_filter: 1
