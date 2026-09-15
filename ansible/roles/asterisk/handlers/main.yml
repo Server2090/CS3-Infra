@@ -1,0 +1,36 @@
+---
+# ansible/roles/asterisk/handlers/main.yml
+# Handlers are tasks that only run when notified by another task.
+# They run exactly once at the end of a play, even if notified
+# multiple times. This prevents Asterisk from restarting ten times
+# when ten config files change in the same play — it restarts once
+# at the end after all changes are applied.
+#
+# Tasks notify a handler by name using:
+#   notify: Restart Asterisk
+# The name here must match the notify string exactly.
+
+- name: Restart Asterisk
+  ansible.builtin.systemd:
+    name: asterisk
+    state: restarted
+    daemon_reload: true
+    # daemon_reload: true tells systemd to re-read its unit files
+    # before restarting. Required if the asterisk.service file
+    # was changed. Safe to always include — no downside if unchanged.
+  listen: "Restart Asterisk"
+  # listen makes the handler respond to notify strings.
+  # Any task that does: notify: Restart Asterisk
+  # will trigger this handler at the end of the play.
+
+- name: Reload Asterisk
+  ansible.builtin.command:
+    cmd: asterisk -rx "core reload"
+    # asterisk -rx runs a command in the Asterisk CLI without
+    # opening an interactive session.
+    # "core reload" reloads all modules and re-reads config files
+    # without dropping active calls — safer than a full restart
+    # when calls might be in progress.
+    # Used for config-only changes (dialplan, PJSIP endpoints)
+    # where a full restart is not needed.
+  listen: "Reload Asterisk"
