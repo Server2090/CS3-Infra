@@ -28,13 +28,21 @@
 - name: Disable IPv6 in GRUB kernel parameters
   ansible.builtin.lineinfile:
     path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX='
-    line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1"'
-    # Adds ipv6.disable=1 as a kernel boot parameter
-    # This disables IPv6 at the kernel level on every boot
-    # The sysctl approach above handles the running system
-    # This handles it at boot before sysctl runs
+    regexp: '^(GRUB_CMDLINE_LINUX="(?!.*ipv6\.disable=1)[^"]*)"$'
+    line: '\1 ipv6.disable=1"'
+    backrefs: true
+    # backrefs: true — use capture groups from regexp in the line value.
+    # How this works:
+    #   regexp captures everything in GRUB_CMDLINE_LINUX="..." EXCEPT
+    #   the closing quote, but only when ipv6.disable=1 is NOT already
+    #   present (the negative lookahead (?!.*ipv6\.disable=1) ensures
+    #   this is idempotent — if the parameter is already there the
+    #   regexp will not match and the line is left untouched).
+    #   line then appends " ipv6.disable=1" before the closing quote.
+    # Result: existing parameters like serial console settings are
+    # preserved and ipv6.disable=1 is appended after them.
+    # Without backrefs the old task replaced the entire line value,
+    # wiping out any existing kernel parameters.
     backup: true
-    # backup = keeps a copy of the original grub file before editing
   notify: Update GRUB
   tags: [common, common_ipv6]

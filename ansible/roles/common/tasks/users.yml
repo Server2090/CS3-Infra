@@ -35,4 +35,11 @@
     # exclusive: false — do not remove other keys that may already
     # exist in authorized_keys. Only add this key if missing.
   loop: "{{ common_local_accounts }}"
+  ignore_errors: "{{ ansible_check_mode }}"
+  # ignore_errors in check mode only — not in real applies.
+  # In --check mode the user creation task above does not actually
+  # create the user (it is a dry run), so authorized_key cannot
+  # find the home directory and fails. This flag suppresses that
+  # expected failure during dry runs without hiding real errors
+  # during actual playbook runs.
   tags: [common, common_users]
