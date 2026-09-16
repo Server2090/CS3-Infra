@@ -36,6 +36,10 @@
   ansible.builtin.import_tasks: service.yml
   tags: asterisk_service
 
+- name: Configure Asterisk PJSIP, dialplan, and MOH
+  ansible.builtin.import_tasks: configure.yml
+  tags: asterisk_configure
+
 - name: Configure firewall rules for SIP and RTP
   ansible.builtin.import_tasks: firewall.yml
   tags: asterisk_firewall
