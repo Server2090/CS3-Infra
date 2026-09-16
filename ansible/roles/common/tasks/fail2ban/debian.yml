@@ -23,3 +23,8 @@
     name: fail2ban
     state: started
     enabled: true
+  ignore_errors: "{{ ansible_check_mode }}"
+  # In --check mode fail2ban is not actually installed (package tasks
+  # are simulated), so systemd cannot find the service and errors out.
+  # ignore_errors only suppresses this in check mode — real applies
+  # will fail normally if fail2ban genuinely cannot be started.
