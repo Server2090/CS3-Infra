@@ -93,16 +93,15 @@ common_ssh_settings:
 
 # ── fail2ban ──────────────────────────────────────────────────────
 common_fail2ban:
-  maxretry: 5
-  # Ban after 5 failed SSH attempts
+  maxretry: "{{ fail2ban_maxretry }}"
+  # Reads from group_vars/all.yml — single source of truth.
+  # Change thresholds in all.yml, not here.
 
-  findtime: 600
-  # Count failures within a 10 minute window
+  findtime: "{{ fail2ban_findtime }}"
+  # Count failures within this window in seconds.
 
-  bantime: 3600
-  # Ban the IP for 1 hour
-  # After bantime expires the IP can try again
-  # Persistent attackers get banned repeatedly
+  bantime: "{{ fail2ban_bantime }}"
+  # Ban duration in seconds.
 
 # ── UFW firewall ──────────────────────────────────────────────────
 common_ufw:

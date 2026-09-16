@@ -71,6 +71,6 @@ internet_available: true
 # Defined here so every role can reference consistent ban settings
 # regardless of which play they run in. The common role's fail2ban
 # config and the asterisk role's SIP jail both read these values.
-fail2ban_maxretry: "{{ common_fail2ban.maxretry }}"
-fail2ban_findtime: "{{ common_fail2ban.findtime }}"
-fail2ban_bantime:  "{{ common_fail2ban.bantime }}"
+fail2ban_maxretry: 5
+fail2ban_findtime: 600
+fail2ban_bantime:  3600
