@@ -40,7 +40,7 @@
 - name: Extract Asterisk source tarball
   ansible.builtin.unarchive:
     src: "/usr/src/asterisk-{{ asterisk_version }}.tar.gz"
-    dest: "/usr/src/"
+    dest: "{{ asterisk_source_dir }}"
     remote_src: true
     # remote_src: true = file is already on the VM, not the control machine.
     extra_opts:
