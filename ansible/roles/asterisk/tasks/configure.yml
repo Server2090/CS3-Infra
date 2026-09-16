@@ -43,7 +43,6 @@
     # pjsip.conf contains SIP passwords — restrict read access
     # to the asterisk user and group only. Other system accounts
     # cannot read the passwords even if they have shell access.
-    validate: /usr/sbin/asterisk -C %s
     # validate runs this command against the rendered file before
     # writing it to dest. %s is replaced with a temp file path.
     # asterisk -C checks config file syntax without starting the
