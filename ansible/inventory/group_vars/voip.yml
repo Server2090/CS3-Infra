@@ -6,7 +6,7 @@
 # (e.g. ansible_user: root from all.yml becomes debian here).
 
 # ── Connection ────────────────────────────────────────────────────
-ansible_user: debian
+ansible_user: cs3admin
 # The Debian 13 cloud image creates a "debian" user via cloud-init.
 # This is the only account that exists before Ansible runs.
 # The common role will create cs3admin with sudo access.

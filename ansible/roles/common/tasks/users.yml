@@ -43,3 +43,22 @@
   # expected failure during dry runs without hiding real errors
   # during actual playbook runs.
   tags: [common, common_users]
+
+- name: Configure passwordless sudo for operator accounts
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/cs3-operators
+    line: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL"
+    create: true
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+    # validate runs visudo syntax check before writing the file.
+    # A bad sudoers file can lock out all sudo access —
+    # validate ensures we never write a broken file.
+    # 0440 = required permissions for sudoers.d files.
+    # NOPASSWD:ALL — Ansible needs passwordless sudo to run tasks.
+    # This is safe because access is already restricted to SSH
+    # key auth only — there is no password to escalate from.
+  loop: "{{ common_local_accounts }}"
+  tags: [common, common_users]
