@@ -66,3 +66,11 @@ internet_available: true
 # Tasks that require internet (package installs, repo updates)
 # check this flag before running so they can be skipped safely
 # in air-gapped environments
+
+# ── fail2ban thresholds ───────────────────────────────────────────
+# Defined here so every role can reference consistent ban settings
+# regardless of which play they run in. The common role's fail2ban
+# config and the asterisk role's SIP jail both read these values.
+fail2ban_maxretry: "{{ common_fail2ban.maxretry }}"
+fail2ban_findtime: "{{ common_fail2ban.findtime }}"
+fail2ban_bantime:  "{{ common_fail2ban.bantime }}"

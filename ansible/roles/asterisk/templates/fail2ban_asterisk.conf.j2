@@ -51,15 +51,15 @@ logpath  = {{ asterisk_log_dir }}/security
 # not general call traffic. This keeps fail2ban efficient — it only
 # reads the relevant log file rather than the full messages log.
 
-maxretry = {{ common_fail2ban.maxretry }}
+maxretry = {{ fail2ban_maxretry }}
 # Reuse the same threshold from common role vars.
 # Consistent policy: same number of failures before ban for both
 # SSH and SIP. Currently 5 from common/vars/main.yml.
 
-findtime = {{ common_fail2ban.findtime }}
+findtime = {{ fail2ban_findtime }}
 # Count failures within this many seconds. Currently 600 (10 min).
 
-bantime  = {{ common_fail2ban.bantime }}
+bantime  = {{ fail2ban_bantime }}
 # Ban duration in seconds. Currently 3600 (1 hour).
 # Using the same values as SSH keeps the security policy consistent
 # and means you only change thresholds in one place (common vars).
