@@ -16,11 +16,15 @@
     direction: incoming
     policy: deny
     state: enabled
+  ignore_errors: "{{ ansible_check_mode }}"
+  # UFW is not actually installed in check mode so the ufw binary
+  # cannot be found. Ignored in dry runs only — real applies fail normally.
 
 - name: Set default outgoing policy to allow
   community.general.ufw:
     direction: outgoing
     policy: allow
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Allow SSH from management subnets
   community.general.ufw:
@@ -33,3 +37,5 @@
   # mgt_subnets comes from group_vars/all.yml.
   # One UFW rule per subnet — loop generates all of them.
   notify: Reload UFW
+  ignore_errors: "{{ ansible_check_mode }}"
+  # Same reason as above — ufw binary absent in check mode.
