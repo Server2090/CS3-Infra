@@ -40,3 +40,18 @@
     state: restarted
   # Restarts chrony to apply the new NTP configuration
   # Only runs if the chrony config template task reported a change
+
+- name: Restart unattended-upgrades
+  ansible.builtin.service:
+    name: unattended-upgrades
+    state: restarted
+  # Restarts unattended-upgrades to apply config changes.
+  # Only runs if the unattended-upgrades template task reported a change.
+
+- name: Reload ufw
+  community.general.ufw:
+    state: reloaded
+  # community.general.ufw notifies "Reload ufw" (lowercase).
+  # The existing "Reload UFW" handler above uses a raw command —
+  # keeping both ensures either notification style works.
+  # This one is notified by the firewall/debian.yml tasks.
