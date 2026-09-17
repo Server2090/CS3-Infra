@@ -6,3 +6,10 @@
     name: nginx
     state: restarted
   listen: "Restart nginx"
+
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded
+  listen: "Reload UFW"
+  # UFW rules added by nginx.yml need a reload to become active.
+  # This handler is notified when new HTTP provisioning rules are added.
