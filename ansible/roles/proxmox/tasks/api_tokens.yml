@@ -35,7 +35,7 @@
   register: token_create
   when: >
     proxmox_api_token_name not in
-    (token_list.stdout | default('[]') | from_json | map(attribute='tokenid') | list
+    (token_list.stdout | default('[]', true) | from_json | map(attribute='tokenid') | list
     | map('split', '!') | map('last') | list)
   # Only create if the token name is not already in the token list.
   # default('[]') handles check mode where pveum returns empty stdout —
