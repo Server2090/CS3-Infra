@@ -82,12 +82,12 @@ sip_extensions:
 
   - id: "201"
     label: "HT802-v2-port1"
-    ata_host: "192.168.10.169"
+    ata_host: "192.168.71.20"
     secret_var: "sip_secret_201"
 
   - id: "202"
     label: "HT802-v2-port2"
-    ata_host: "192.168.10.169"
+    ata_host: "192.168.71.20"
     secret_var: "sip_secret_202"
 
 # ── PJSIP transport ───────────────────────────────────────────────

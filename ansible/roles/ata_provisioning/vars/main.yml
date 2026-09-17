@@ -78,7 +78,7 @@ ata_devices:
 
   - name: "ht802-v2"
     mac: "EC74D798DCDF"
-    ip: "192.168.10.169"
+    ip: "192.168.71.20"
     firmware_gen: "v2"
     admin_password_var: "ata_v2_admin_password"
     ports:

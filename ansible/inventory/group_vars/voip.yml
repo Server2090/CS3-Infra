@@ -41,9 +41,7 @@ ata_subnets:
   - subnet: "192.168.80.0/24"
     comment: "Management network — Asterisk server itself"
   - subnet: "192.168.71.0/24"
-    comment: "HT802 v1 network (192.168.71.10)"
-  - subnet: "192.168.10.0/24"
-    comment: "HT802 v2 network (192.168.10.169)"
+    comment: "HT802 v1 and v2 network (192.168.71.10 and 192.168.71.20)"
 
 # ── SIP ports ─────────────────────────────────────────────────────
 sip_port: 5060

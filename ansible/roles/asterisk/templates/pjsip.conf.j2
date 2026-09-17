@@ -103,7 +103,8 @@ password = {{ vars[ext.secret_var] }}
 ; This value never appears in git — only in the encrypted sops file
 ; and in the rendered file on the VM (owned by asterisk:asterisk, mode 0640).
 
-[aor{{ ext.id }}]
+[{{ ext.id }}]
+; AoR section — same name as endpoint, different type
 type = aor
 ; AoR (Address of Record) — tracks where a registered device is located.
 ; When the HT802 registers, Asterisk stores its contact address here.
