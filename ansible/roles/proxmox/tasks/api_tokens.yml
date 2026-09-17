@@ -35,11 +35,12 @@
   register: token_create
   when: >
     proxmox_api_token_name not in
-    (token_list.stdout | from_json | map(attribute='tokenid') | list
+    (token_list.stdout | default('[]') | from_json | map(attribute='tokenid') | list
     | map('split', '!') | map('last') | list)
-  # Only create if the token name is not already in the token list
-  # from_json parses the JSON output of the list command
-  # map extracts and splits the tokenid field to get just the name
+  # Only create if the token name is not already in the token list.
+  # default('[]') handles check mode where pveum returns empty stdout —
+  # from_json would fail on an empty string without this guard.
+  # In a real run, pveum returns valid JSON so default() is never used.
   tags: [proxmox, proxmox_api_tokens]
 
 - name: Display token secret — save this to KeePassXC and tofu/secrets.sops.yaml
