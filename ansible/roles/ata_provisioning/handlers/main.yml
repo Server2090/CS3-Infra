@@ -1,0 +1,8 @@
+---
+# ansible/roles/ata_provisioning/handlers/main.yml
+
+- name: Restart nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+  listen: "Restart nginx"

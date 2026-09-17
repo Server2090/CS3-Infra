@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HT80XV2 XML Provisioning Configuration -->
+<!-- Managed by Ansible — do not edit manually -->
+<!-- Device: {{ item.name }} | MAC: {{ item.mac }} -->
+<!-- Generated: {{ ansible_date_time.iso8601 }} -->
+<gs_provision version="1">
+<mac>{{ item.mac }}</mac>
+  <config version="2">
+
+    <!-- ── Admin password ──────────────────────────────────── -->
+    <P2>{{ vars[item.admin_password_var] }}</P2>
+
+    <!-- ── Provisioning server ─────────────────────────────── -->
+    <P192>{{ ansible_host }}/ata</P192>
+    <P193>{{ provisioning_check_interval }}</P193>
+    <P194>3</P194>
+
+    <!-- ── NTP ────────────────────────────────────────────── -->
+    <P30>pool.ntp.org</P30>
+
+    <!-- ── FXS Port 1 ─────────────────────────────────────── -->
+{% set port1 = item.ports | selectattr('port', 'eq', 1) | first %}
+    <P271>1</P271>
+    <P31>1</P31>
+    <P47>{{ sip_server }}</P47>
+    <P35>{{ port1.sip_user_id }}</P35>
+    <P36>{{ port1.sip_auth_id }}</P36>
+    <P34>{{ vars[port1.sip_password_var] }}</P34>
+    <P3>{{ port1.display_name }}</P3>
+    <P96>0</P96>
+    <P99>8</P99>
+
+    <!-- ── FXS Port 2 ─────────────────────────────────────── -->
+{% set port2 = item.ports | selectattr('port', 'eq', 2) | first %}
+    <P401>1</P401>
+    <P402>{{ sip_server }}</P402>
+    <P404>{{ port2.sip_user_id }}</P404>
+    <P405>{{ port2.sip_auth_id }}</P405>
+    <P406>{{ vars[port2.sip_password_var] }}</P406>
+    <P407>{{ port2.display_name }}</P407>
+    <!-- P740 = SIP port for FXS2 on v2 firmware               -->
+    <!-- v2 hardware uses 5062 for FXS2 by default              -->
+{% if port2.sip_port_override is defined %}
+    <P740>{{ port2.sip_port_override }}</P740>
+{% endif %}
+    <P504>0</P504>
+    <P509>8</P509>
+
+  </config>
+</gs_provision>

@@ -1,0 +1,100 @@
+---
+# ansible/roles/ata_provisioning/vars/main.yml
+# All ATA device definitions and provisioning settings.
+# To add a new ATA: add an entry to ata_devices.
+# To change SIP extensions: update the ports list.
+# Passwords never appear here — they come from SOPS secrets.
+
+# ── Provisioning server ───────────────────────────────────────────
+provisioning_base_url: "http://{{ ansible_host }}/ata"
+# ansible_host = 192.168.80.10 (the Asterisk VM).
+# The ATAs fetch their config from:
+#   http://192.168.80.10/ata/cfg\<MACADDRESS\>.xml
+# nginx on the Asterisk VM serves these files.
+# Note: URL uses http not https — old HT802 v1 firmware
+# only supports HTTP for provisioning.
+
+provisioning_web_root: "/var/www/ata"
+# Where nginx serves files from on the Asterisk VM.
+# Ansible writes the rendered XML files here.
+
+provisioning_check_interval: 10080
+# How often the ATAs check for new config, in minutes.
+# 10080 = once per week. Change to 1440 for daily checks.
+# After any config change: run Ansible then manually reboot
+# the ATA or wait for the next automatic check.
+
+# ── SIP server ───────────────────────────────────────────────────
+sip_server: "192.168.80.10"
+# The Asterisk server IP. ATAs register SIP to this address.
+# Matches voip_server_ip in group_vars/voip.yml (without /24).
+
+sip_server_port: 5060
+# Standard SIP UDP port. Both FXS1 ports use this.
+# FXS2 on v2 uses port 5062 — handled per-device below.
+
+# ── ATA devices ───────────────────────────────────────────────────
+# One entry per physical ATA device.
+# Each device has one or two FXS ports, each mapping to a
+# SIP extension defined in roles/asterisk/vars/main.yml.
+ata_devices:
+  - name: "ht802-v1"
+    # Human readable name — used in comments and log messages.
+    mac: "C074AD811652"
+    # MAC address in UPPERCASE without colons.
+    # The provisioning filename is cfg<MAC>.xml — must match exactly.
+    ip: "192.168.71.10"
+    # Current IP of the ATA — for documentation only.
+    # The ATA uses DHCP and finds the config by MAC, not IP.
+    firmware_gen: "v1"
+    # v1 = old firmware (1.0.33.x), mini_httpd web server.
+    # v2 = new firmware (1.0.5.x), Vue.js web server.
+    # Controls which XML template is used.
+    admin_password_var: "ata_v1_admin_password"
+    # Name of the SOPS variable holding this ATA's admin password.
+    # The password itself lives in group_vars/voip.sops.yml.
+    ports:
+      - port: 1
+        # FXS port number on the physical device.
+        extension: "101"
+        # SIP extension this port registers as.
+        # Must match an endpoint in roles/asterisk/vars/main.yml.
+        sip_user_id: "101"
+        # SIP User ID — what the ATA sends as its SIP identity.
+        # Matches the endpoint ID in pjsip.conf.
+        sip_auth_id: "101"
+        # SIP Auth ID — used during authentication.
+        # For simplicity we use the same value as the user ID.
+        sip_password_var: "sip_secret_101"
+        # Name of the SOPS variable holding the SIP password.
+        display_name: "HT802-v1 Port 1"
+        # Name shown on caller ID for outbound calls.
+      - port: 2
+        extension: "102"
+        sip_user_id: "102"
+        sip_auth_id: "102"
+        sip_password_var: "sip_secret_102"
+        display_name: "HT802-v1 Port 2"
+
+  - name: "ht802-v2"
+    mac: "EC74D798DCDF"
+    ip: "192.168.10.169"
+    firmware_gen: "v2"
+    admin_password_var: "ata_v2_admin_password"
+    ports:
+      - port: 1
+        extension: "201"
+        sip_user_id: "201"
+        sip_auth_id: "201"
+        sip_password_var: "sip_secret_201"
+        display_name: "HT802-v2 Port 1"
+      - port: 2
+        extension: "202"
+        sip_user_id: "202"
+        sip_auth_id: "202"
+        sip_password_var: "sip_secret_202"
+        display_name: "HT802-v2 Port 2"
+        sip_port_override: 5062
+        # FXS2 on v2 registers on port 5062 not 5060.
+        # This was observed on the device status page.
+        # The template uses this when present.

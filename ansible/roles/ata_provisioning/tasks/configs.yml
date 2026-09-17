@@ -1,0 +1,30 @@
+---
+# ansible/roles/ata_provisioning/tasks/configs.yml
+# Loads SIP secrets and generates XML provisioning files for each ATA.
+# Re-run this with --tags ata_configs after any SIP config change.
+
+- name: Load SOPS-encrypted SIP and ATA secrets
+  community.sops.load_vars:
+    file: "{{ inventory_dir }}/group_vars/voip.sops.yml"
+  no_log: true
+  # Decrypts voip.sops.yml and loads all variables into memory.
+  # no_log prevents secrets from appearing in Ansible output.
+  # The decrypted values are used by the XML templates below.
+
+- name: Generate XML provisioning config for each ATA
+  ansible.builtin.template:
+    src: "ht802_{{ item.firmware_gen }}.xml.j2"
+    dest: "{{ provisioning_web_root }}/cfg{{ item.mac }}.xml"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  loop: "{{ ata_devices }}"
+  # loop iterates over each device in vars/main.yml.
+  # For each device, renders the correct template based on firmware_gen:
+  #   firmware_gen: v1 → ht802_v1.xml.j2
+  #   firmware_gen: v2 → ht802_v2.xml.j2
+  # The rendered file is named cfg<MAC>.xml — the exact filename
+  # the HT802 requests when it fetches its provisioning config.
+  # Example: cfgC074AD811652.xml for the v1 device.
+  no_log: true
+  # no_log: true because the rendered XML contains SIP passwords.

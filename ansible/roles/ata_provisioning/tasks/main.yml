@@ -1,0 +1,24 @@
+---
+# ansible/roles/ata_provisioning/tasks/main.yml
+# Sets up the ATA provisioning server on the Asterisk VM.
+# Two tasks in order:
+#   1. nginx — installs nginx and configures it to serve XML files
+#   2. configs — generates the XML config file for each ATA device
+#
+# After this role runs:
+#   - nginx serves http://192.168.80.10/ata/cfg\<MAC\>.xml
+#   - Each ATA fetches its config from that URL on every reboot
+#   - To update ATA config: edit vars/main.yml, run Ansible,
+#     reboot each ATA (or wait for automatic check interval)
+#
+# Tags:
+#   ata_nginx   — re-run only nginx setup
+#   ata_configs — re-run only XML config generation (fastest)
+
+- name: Set up nginx provisioning server
+  ansible.builtin.import_tasks: nginx.yml
+  tags: ata_nginx
+
+- name: Generate ATA XML config files
+  ansible.builtin.import_tasks: configs.yml
+  tags: ata_configs

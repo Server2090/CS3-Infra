@@ -1,0 +1,67 @@
+---
+# ansible/roles/ata_provisioning/tasks/nginx.yml
+# Installs nginx and configures it to serve ATA provisioning XML files.
+# nginx runs on port 80 on the Asterisk VM (192.168.80.10).
+# The ATAs fetch http://192.168.80.10/ata/cfg\<MAC\>.xml from here.
+
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create provisioning web root directory
+  ansible.builtin.file:
+    path: "{{ provisioning_web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+    # www-data is the nginx user on Debian.
+    # nginx reads files from this directory to serve to ATAs.
+
+- name: Deploy nginx provisioning site config
+  ansible.builtin.template:
+    src: nginx_ata.conf.j2
+    dest: /etc/nginx/sites-available/ata-provisioning
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nginx
+
+- name: Enable nginx provisioning site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/ata-provisioning
+    dest: /etc/nginx/sites-enabled/ata-provisioning
+    state: link
+    # Creates a symlink from sites-enabled to sites-available.
+    # nginx reads from sites-enabled — this is the standard
+    # Debian nginx pattern for enabling/disabling sites.
+
+- name: Disable nginx default site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+    # Remove the default nginx welcome page.
+    # The default site would conflict with our provisioning site
+    # since both would try to listen on port 80.
+  notify: Restart nginx
+
+- name: Enable and start nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Allow HTTP from ATA subnets for provisioning
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+    src: "{{ item.subnet }}"
+    comment: "HTTP provisioning — {{ item.comment }}"
+  loop: "{{ ata_subnets }}"
+  # ata_subnets comes from group_vars/voip.yml.
+  # ATAs need HTTP access to port 80 to fetch their XML configs.
+  notify: Reload UFW

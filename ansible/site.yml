@@ -64,6 +64,15 @@
   gather_facts: true
   roles:
     - role: asterisk
+
+- name: Configure ATA provisioning server
+  hosts: voip
+  gather_facts: true
+  roles:
+    - role: ata_provisioning
+    # Sets up nginx on the Asterisk VM to serve XML provisioning
+    # files for both HT802 ATAs. ATAs fetch their SIP config
+    # from http://192.168.80.10/ata/cfg<MAC>.xml on every reboot.
     # Role does not exist yet — created in Phase 3.
     # Running site.yml before Phase 3 is complete will error here.
     # To safely run only Proxmox steps in the meantime:

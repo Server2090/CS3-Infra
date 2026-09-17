@@ -1,0 +1,44 @@
+# {{ ansible_managed }}
+# Nginx config for Grandstream HT802 ATA provisioning server.
+# Serves XML config files at http://192.168.80.10/ata/cfg\<MAC\>.xml
+# Managed by Ansible — do not edit manually.
+
+server {
+    listen 80;
+    # Listen on port 80 (HTTP).
+    # HT802 v1 firmware only supports HTTP for provisioning — not HTTPS.
+    # The v2 firmware supports HTTPS but HTTP works for both.
+    # Since this server is on a private network (192.168.80.0/24)
+    # and only reachable from ATA subnets via UFW, HTTP is acceptable.
+
+    server_name _;
+    # _ = catch-all server name. Accept requests for any hostname
+    # or IP address. The ATAs connect by IP, not hostname.
+
+    root {{ provisioning_web_root }};
+    # Serve files from /var/www/ata/
+    # The XML config files are written here by the configs.yml task.
+
+    location /ata/ {
+        # Serve files under /ata/ path.
+        # ATA requests: GET /ata/cfg<MAC>.xml
+        alias {{ provisioning_web_root }}/;
+        # alias maps /ata/ requests to the provisioning_web_root directory.
+        # GET /ata/cfgC074AD811652.xml → serves /var/www/ata/cfgC074AD811652.xml
+
+        default_type application/xml;
+        # Tell clients the files are XML.
+        # The HT802 expects XML content-type for provisioning files.
+
+        autoindex off;
+        # Disable directory listing — do not show the list of XML files
+        # to anyone who browses to /ata/ without a filename.
+        # Security: ATAs should only fetch their own config file.
+    }
+
+    access_log /var/log/nginx/ata-provisioning-access.log;
+    error_log  /var/log/nginx/ata-provisioning-error.log;
+    # Separate log files for provisioning traffic.
+    # Check these logs to see when ATAs fetched their config:
+    #   sudo tail -f /var/log/nginx/ata-provisioning-access.log
+}

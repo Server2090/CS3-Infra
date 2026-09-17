@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HT8XX XML Provisioning Configuration -->
+<!-- Managed by Ansible — do not edit manually -->
+<!-- Device: {{ item.name }} | MAC: {{ item.mac }} -->
+<!-- Generated: {{ ansible_date_time.iso8601 }} -->
+<gs_provision version="1">
+<mac>{{ item.mac }}</mac>
+  <config version="2">
+
+    <!-- ── Admin password ──────────────────────────────────── -->
+    <!-- P2 = Admin password for web interface -->
+    <!-- We set this from SOPS secrets so the default 'admin' -->
+    <!-- password is replaced on first provisioning run.        -->
+    <P2>{{ vars[item.admin_password_var] }}</P2>
+
+    <!-- ── Provisioning server ─────────────────────────────── -->
+    <!-- P192 = Config Server Path                              -->
+    <!-- Point back at ourselves so the device always pulls     -->
+    <!-- fresh config from our nginx on every reboot.           -->
+    <P192>{{ ansible_host }}/ata</P192>
+    <!-- P193 = Automatic upgrade interval in minutes           -->
+    <P193>{{ provisioning_check_interval }}</P193>
+    <!-- P194 = Automatic upgrade mode: 3 = every X minutes     -->
+    <P194>3</P194>
+
+    <!-- ── NTP ────────────────────────────────────────────── -->
+    <!-- Use the same NTP servers as the rest of the lab        -->
+    <P30>pool.ntp.org</P30>
+
+    <!-- ── FXS Port 1 ─────────────────────────────────────── -->
+{% set port1 = item.ports | selectattr('port', 'eq', 1) | first %}
+    <!-- P271 = Account Active: 1=Yes                          -->
+    <P271>1</P271>
+    <!-- P31 = SIP Registration: 1=Yes                         -->
+    <P31>1</P31>
+    <!-- P47 = Primary SIP Server                              -->
+    <P47>{{ sip_server }}</P47>
+    <!-- P35 = SIP User ID                                     -->
+    <P35>{{ port1.sip_user_id }}</P35>
+    <!-- P36 = SIP Authenticate ID                             -->
+    <P36>{{ port1.sip_auth_id }}</P36>
+    <!-- P34 = SIP Authenticate Password                       -->
+    <P34>{{ vars[port1.sip_password_var] }}</P34>
+    <!-- P3 = Display Name                                     -->
+    <P3>{{ port1.display_name }}</P3>
+    <!-- P96 = Preferred codec: 0=PCMU(ulaw) 8=PCMA(alaw)     -->
+    <P96>0</P96>
+    <!-- P99 = Second preferred codec                          -->
+    <P99>8</P99>
+
+    <!-- ── FXS Port 2 ─────────────────────────────────────── -->
+{% set port2 = item.ports | selectattr('port', 'eq', 2) | first %}
+    <!-- P401 = Account Active: 1=Yes                          -->
+    <P401>1</P401>
+    <!-- P402 = SIP Server for FXS2                            -->
+    <P402>{{ sip_server }}</P402>
+    <!-- P404 = SIP User ID for FXS2                           -->
+    <P404>{{ port2.sip_user_id }}</P404>
+    <!-- P405 = SIP Auth ID for FXS2                           -->
+    <P405>{{ port2.sip_auth_id }}</P405>
+    <!-- P406 = SIP Auth Password for FXS2                     -->
+    <P406>{{ vars[port2.sip_password_var] }}</P406>
+    <!-- P407 = Display Name for FXS2                          -->
+    <P407>{{ port2.display_name }}</P407>
+    <!-- P504 = Preferred codec FXS2: 0=PCMU                   -->
+    <P504>0</P504>
+    <!-- P509 = Second preferred codec FXS2                    -->
+    <P509>8</P509>
+
+  </config>
+</gs_provision>
