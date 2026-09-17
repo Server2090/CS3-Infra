@@ -137,3 +137,11 @@ proxmox_type: proxmox
 #   - Proxmox apt repo management
 #   - ip_forward sysctl (required for VM routing, not for VMs themselves)
 #   - UFW rules for Proxmox cluster traffic (Corosync, SPICE, migration)
+
+# ── Common role vars ──────────────────────────────────────────────
+# These mirror group_vars/debian.yml — Proxmox is Debian-based so
+# the common role needs the same package manager and tool vars.
+common_python_apt: python3-apt
+common_pkg_manager: apt
+common_firewall: ufw
+common_auto_update: unattended-upgrades
