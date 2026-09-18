@@ -21,6 +21,7 @@ common_packages_install:
   - lm-sensors    # hardware temperature and fan monitoring
   - smartmontools # SMART drive health monitoring — critical for SSDs
   - chrony        # NTP client — more reliable than systemd-timesyncd
+  - sudo 
   - fail2ban      # brute force protection for SSH
   - ufw           # firewall — simple frontend for iptables
   - unattended-upgrades  # automatic security updates
